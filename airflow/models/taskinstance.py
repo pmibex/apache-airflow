@@ -587,6 +587,10 @@ class TaskInstance(Base, LoggingMixin):
         self._try_number = value
 
     @property
+    def actual_try_number(self):
+        return self._try_number
+
+    @property
     def prev_attempted_tries(self) -> int:
         """
         Based on this instance's try_number, this will calculate
@@ -1289,6 +1293,9 @@ class TaskInstance(Base, LoggingMixin):
             # If the task continues after being deferred (next_method is set), use the original start_date
             self.start_date = self.start_date if self.next_method else timezone.utcnow()
             if self.state == State.UP_FOR_RESCHEDULE:
+                # FIXME: unfortunately the state is always queued in this method,
+                #  we should find a way to get the state before queuing the TI state,
+                #  otherwise this block will be never reached as it is the case now.
                 task_reschedule: TR = TR.query_for_task_instance(self, session=session).first()
                 if task_reschedule:
                     self.start_date = task_reschedule.start_date
@@ -1801,7 +1808,11 @@ class TaskInstance(Base, LoggingMixin):
 
     @provide_session
     def _handle_reschedule(
-        self, actual_start_date, reschedule_exception, test_mode=False, session=NEW_SESSION
+        self,
+        actual_start_date,
+        reschedule_exception: AirflowRescheduleException,
+        test_mode=False,
+        session=NEW_SESSION,
     ):
         # Don't record reschedule request in test mode
         if test_mode:
@@ -1827,13 +1838,14 @@ class TaskInstance(Base, LoggingMixin):
         # Log reschedule request
         session.add(
             TaskReschedule(
-                self.task,
-                self.run_id,
-                self._try_number,
-                actual_start_date,
-                self.end_date,
-                reschedule_exception.reschedule_date,
-                self.map_index,
+                task=self.task,
+                run_id=self.run_id,
+                try_number=self._try_number,
+                poke_number=reschedule_exception.poke_number,
+                start_date=actual_start_date,
+                end_date=self.end_date,
+                reschedule_date=reschedule_exception.reschedule_date,
+                map_index=self.map_index,
             )
         )
 
@@ -1974,9 +1986,9 @@ class TaskInstance(Base, LoggingMixin):
             return True
         if not getattr(self, "task", None):
             # Couldn't load the task, don't know number of retries, guess:
-            return self.try_number <= self.max_tries
+            return self.actual_try_number <= self.max_tries
 
-        return self.task.retries and self.try_number <= self.max_tries
+        return self.task.retries and self.actual_try_number <= self.max_tries
 
     def get_template_context(
         self,
