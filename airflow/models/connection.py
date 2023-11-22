@@ -24,6 +24,7 @@ from json import JSONDecodeError
 from typing import Any
 from urllib.parse import parse_qsl, quote, unquote, urlencode, urlsplit
 
+import re2
 from sqlalchemy import Boolean, Column, Integer, String, Text
 from sqlalchemy.orm import declared_attr, reconstructor, synonym
 
@@ -37,6 +38,27 @@ from airflow.utils.log.secrets_masker import mask_secret
 from airflow.utils.module_loading import import_string
 
 log = logging.getLogger(__name__)
+
+# This is an RFC3986-compliant basic URI matcher. See https://datatracker.ietf.org/doc/html/rfc3986
+# URI definition is rather broad and the only real requirement for an URI is that it begins with scheme
+# followed by a colon (then it does not have authority component (the second example below)
+#
+#    The following are two example URIs and their component parts:
+#
+#          foo://example.com:8042/over/there?name=ferret#nose
+#          \_/   \______________/\_________/ \_________/ \__/
+#           |           |            |            |        |
+#        scheme     authority       path        query   fragment
+#           |   _____________________|__
+#          / \ /                        \
+#          urn:example:animal:ferret:nose
+#
+BASIC_URI_MATCHER = re2.compile(r"^[a-zA-Z0-9+-\.]+:")
+
+# This is backwards-compatibility hack. It makes "host" and "host:port" parsed as URIs even if they
+# are not RFC3986-compliant. This is to make sure that we don't break existing connections that are created
+# from such simplistic "URIs". We also handle the case when we added // in front of those "URIs".
+HOST_OR_HOST_PORT_ONLY_MATCHER = re2.compile(r"^(//)?[^:/]+(:[0-9]+)?$")
 
 
 def parse_netloc_to_hostname(*args, **kwargs):
@@ -190,27 +212,85 @@ class Connection(Base, LoggingMixin):
         return conn_type
 
     def _parse_from_uri(self, uri: str):
-        schemes_count_in_uri = uri.count("://")
-        if schemes_count_in_uri > 2:
-            raise AirflowException(f"Invalid connection string: {uri}.")
-        host_with_protocol = schemes_count_in_uri == 2
-        uri_parts = urlsplit(uri)
-        conn_type = uri_parts.scheme
-        self.conn_type = self._normalize_conn_type(conn_type)
-        rest_of_the_url = uri.replace(f"{conn_type}://", ("" if host_with_protocol else "//"))
-        if host_with_protocol:
-            uri_splits = rest_of_the_url.split("://", 1)
-            if "@" in uri_splits[0] or ":" in uri_splits[0]:
-                raise AirflowException(f"Invalid connection string: {uri}.")
-        uri_parts = urlsplit(rest_of_the_url)
-        protocol = uri_parts.scheme if host_with_protocol else None
-        host = _parse_netloc_to_hostname(uri_parts)
-        self.host = self._create_host(protocol, host)
-        quoted_schema = uri_parts.path[1:]
-        self.schema = unquote(quoted_schema) if quoted_schema else quoted_schema
-        self.login = unquote(uri_parts.username) if uri_parts.username else uri_parts.username
-        self.password = unquote(uri_parts.password) if uri_parts.password else uri_parts.password
-        self.port = uri_parts.port
+        if not uri:
+            raise AirflowException("Invalid (empty) - URI passed.")
+        hack_for_host_and_host_port_only_uri_like_specifications = False
+        if HOST_OR_HOST_PORT_ONLY_MATCHER.match(uri):
+            # We add a special treatment here for the simplistic way of specifying the URIs in the form
+            # of <host> or <host>:<port> - we treat them as host-only and host:port-only URIs
+            if not uri.startswith("//"):
+                uri = f"//{uri}"
+            hack_for_host_and_host_port_only_uri_like_specifications = True
+        first_colon_index = uri.find(":")
+        if (
+            not hack_for_host_and_host_port_only_uri_like_specifications
+            and first_colon_index != -1
+            and uri[first_colon_index : first_colon_index + 3] != "://"
+        ):
+            if not BASIC_URI_MATCHER.match(uri):
+                raise AirflowException(
+                    f"Invalid URI: {uri}. Each URI must start with `<scheme>:` where "
+                    f"scheme consists of alphas, digits, +, -, . characters."
+                )
+            uri_parts = urlsplit(uri)
+            # Auth part is missing in case of "://"-less URI so no login/password/port can be set
+            # we also pass the path directly to host
+            self.conn_type = self._normalize_conn_type(uri_parts.scheme)
+            self.schema = uri_parts.scheme
+            self.host = uri_parts.path
+            self.login = None
+            self.password = None
+            self.port = None
+            self.extract_query_part(uri_parts)
+        else:
+            schemes_count_in_uri = uri.count("://")
+            hack_for_special_treatment_where_authority_is_taken_from_internal_protocol = (
+                schemes_count_in_uri == 2
+            )
+            uri_parts = urlsplit(uri)
+            conn_type = uri_parts.scheme
+            self.conn_type = self._normalize_conn_type(conn_type)
+            rest_of_the_url = uri.replace(
+                f"{conn_type}://",
+                ("" if hack_for_special_treatment_where_authority_is_taken_from_internal_protocol else "//"),
+            )
+            if hack_for_special_treatment_where_authority_is_taken_from_internal_protocol:
+                # This is a special handling of URIs that are not RFC3986 compliant when it comes to
+                # parsing the authority part (host, port, user, password). Technically speaking the URIS
+                # of this form: type://protocol://user:pass@host:123?param=value are not compliant
+                # with RFC3986 and their authority part should not be parsed and converted into host, port,
+                # user, password of the Connection. However, we have to do it for backward compatibility
+                # reasons. This is quite a hack that allows us to support the non-RFC3986 compliant
+                # format of the URI.
+                uri_splits = rest_of_the_url.split("://", 1)
+                if "@" in uri_splits[0] or ":" in uri_splits[0]:
+                    raise AirflowException(
+                        f"Invalid connection string: {uri}. "
+                        f"  The host cannot contain '@' or ':' : {uri_splits[0]}"
+                    )
+            uri_parts = urlsplit(rest_of_the_url)
+            protocol = (
+                uri_parts.scheme
+                if hack_for_special_treatment_where_authority_is_taken_from_internal_protocol
+                else None
+            )
+            host = _parse_netloc_to_hostname(uri_parts)
+            self.host = self._create_host(protocol, host)
+            quoted_schema = uri_parts.path[1:]
+            self.schema = unquote(quoted_schema) if quoted_schema else quoted_schema
+            if not self.schema:
+                # When derived schema is empty - we are using connection type as source of the schema
+                # but we are replacing the dashes with underscores to make it compatible with the
+                # URI specification. This is yet another terrible hack coming from special treatment
+                # of the internal protocol part of the URI as one providing authority part.
+                self.schema = self.conn_type.replace("_", "-")
+            self.login = unquote(uri_parts.username) if uri_parts.username else uri_parts.username
+            self.password = unquote(uri_parts.password) if uri_parts.password else uri_parts.password
+            self.port = uri_parts.port
+            self.extract_query_part(uri_parts)
+
+    def extract_query_part(self, uri_parts):
+        # We currently only support query parameters in the URI, we do not support fragments
         if uri_parts.query:
             query = dict(parse_qsl(uri_parts.query, keep_blank_values=True))
             if self.EXTRA_KEY in query:
@@ -219,7 +299,7 @@ class Connection(Base, LoggingMixin):
                 self.extra = json.dumps(query)
 
     @staticmethod
-    def _create_host(protocol, host) -> str | None:
+    def _create_host(protocol: str | None, host: str) -> str | None:
         """Return the connection host with the protocol."""
         if not host:
             return host
@@ -270,7 +350,7 @@ class Connection(Base, LoggingMixin):
             else:
                 host_block += f":{self.port}"
 
-        if self.schema:
+        if self.schema and not uri.startswith(self.schema):
             host_block += f"/{quote(self.schema, safe='')}"
 
         uri += host_block
@@ -280,10 +360,14 @@ class Connection(Base, LoggingMixin):
                 query: str | None = urlencode(self.extra_dejson)
             except TypeError:
                 query = None
-            if query and self.extra_dejson == dict(parse_qsl(query, keep_blank_values=True)):
-                uri += ("?" if self.schema else "/?") + query
+            if not self.schema and (self.host or self.login):
+                uri += "/?"
             else:
-                uri += ("?" if self.schema else "/?") + urlencode({self.EXTRA_KEY: self.extra})
+                uri += "?"
+            if query and self.extra_dejson == dict(parse_qsl(query, keep_blank_values=True)):
+                uri += query
+            else:
+                uri += urlencode({self.EXTRA_KEY: self.extra})
 
         return uri
 
