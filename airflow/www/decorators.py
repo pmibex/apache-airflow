@@ -24,12 +24,13 @@ import json
 import logging
 from io import BytesIO
 from typing import Callable, TypeVar, cast
+from sqlalchemy import select
 
 import pendulum
 from flask import after_this_request, request
 from pendulum.parsing.exceptions import ParserError
 
-from airflow.models import Log
+from airflow.models import Log, DagRun
 from airflow.utils.log import secrets_masker
 from airflow.utils.session import create_session
 from airflow.www.extensions.init_auth_manager import get_auth_manager
@@ -125,6 +126,10 @@ def action_logging(func: T | None = None, event: str | None = None) -> T | Calla
                     extra_fields = {**extra_fields, **masked_json}
 
                 params = {**request.values, **request.view_args}
+                
+                dag_id = params.get("dag_id") or (session.scalar(select(DagRun.dag_id)
+                                                                .where(DagRun.id == params.get("pk"))) if event_name == "dagrun.delete" else None)
+
                 if params and "is_paused" in params:
                     extra_fields["is_paused"] = params["is_paused"] == "false"
 
@@ -141,7 +146,7 @@ def action_logging(func: T | None = None, event: str | None = None) -> T | Calla
                     owner_display_name=user_display,
                     extra=json.dumps(extra_fields),
                     task_id=params.get("task_id"),
-                    dag_id=params.get("dag_id"),
+                    dag_id=dag_id,
                     run_id=params.get("run_id") or params.get("dag_run_id"),
                 )
 
