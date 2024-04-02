@@ -94,6 +94,7 @@ from airflow.exceptions import (
     TaskNotFound,
 )
 from airflow.jobs.job import run_job
+from airflow.listeners.listener import get_listener_manager
 from airflow.models.abstractoperator import AbstractOperator, TaskStateChangeCallback
 from airflow.models.base import Base, StringID
 from airflow.models.baseoperator import BaseOperator
@@ -151,6 +152,7 @@ if TYPE_CHECKING:
     from airflow.models.dagbag import DagBag
     from airflow.models.operator import Operator
     from airflow.models.slamiss import SlaMiss
+    from airflow.models.toggle_dag_callback import ToggleDag
     from airflow.serialization.pydantic.dag import DagModelPydantic
     from airflow.serialization.pydantic.dag_run import DagRunPydantic
     from airflow.typing_compat import Literal
@@ -180,7 +182,7 @@ ScheduleIntervalArg = Union[ArgNotSet, ScheduleInterval]
 ScheduleArg = Union[ArgNotSet, ScheduleInterval, Timetable, BaseDataset, Collection["Dataset"]]
 
 SLAMissCallback = Callable[["DAG", str, str, List["SlaMiss"], List[TaskInstance]], None]
-
+ToggleDagCallback = Callable[["DAG", str, str, List["ToggleDag"]], None]
 # Backward compatibility: If neither schedule_interval nor timetable is
 # *provided by the user*, default to a one-day interval.
 DEFAULT_SCHEDULE_INTERVAL = timedelta(days=1)
@@ -418,6 +420,8 @@ class DAG(LoggingMixin):
         timeouts. See :ref:`sla_miss_callback<concepts:sla_miss_callback>` for
         more information about the function signature and parameters that are
         passed to the callback.
+    :param toggle_dag_callback:  specify a function or list of functions to call when dag
+        goes to ON state from OFF state or from OFF state to ON state
     :param default_view: Specify DAG default view (grid, graph, duration,
                                                    gantt, landing_times), default grid
     :param orientation: Specify DAG orientation in graph view (LR, TB, RL, BT), default LR
@@ -510,6 +514,7 @@ class DAG(LoggingMixin):
         ),
         dagrun_timeout: timedelta | None = None,
         sla_miss_callback: None | SLAMissCallback | list[SLAMissCallback] = None,
+        toggle_dag_callback: None | ToggleDagCallback | list[ToggleDagCallback] = None,
         default_view: str = airflow_conf.get_mandatory_value("webserver", "dag_default_view").lower(),
         orientation: str = airflow_conf.get_mandatory_value("webserver", "dag_orientation"),
         catchup: bool = airflow_conf.getboolean("scheduler", "catchup_by_default"),
@@ -686,6 +691,7 @@ class DAG(LoggingMixin):
                 )
         self.dagrun_timeout = dagrun_timeout
         self.sla_miss_callback = sla_miss_callback
+        self.toggle_dag_callback = toggle_dag_callback
         if default_view in DEFAULT_VIEW_PRESETS:
             self._default_view: str = default_view
         elif default_view == "tree":
@@ -3479,6 +3485,7 @@ class DAG(LoggingMixin):
                 "task_dict",
                 "template_searchpath",
                 "sla_miss_callback",
+                "toggle_dag_callback",
                 "on_success_callback",
                 "on_failure_callback",
                 "template_undefined",
@@ -3805,6 +3812,9 @@ class DagModel(Base):
         :param including_subdags: whether to include the DAG's subdags
         :param session: session
         """
+        get_listener_manager().hook.on_dag_paused(
+            dag=self, is_paused=is_paused, including_subdags=including_subdags, session=session
+        )
         filter_query = [
             DagModel.dag_id == self.dag_id,
         ]
@@ -4006,6 +4016,7 @@ def dag(
     ),
     dagrun_timeout: timedelta | None = None,
     sla_miss_callback: None | SLAMissCallback | list[SLAMissCallback] = None,
+    toggle_dag_callback: None | ToggleDagCallback | list[ToggleDagCallback] = None,
     default_view: str = airflow_conf.get_mandatory_value("webserver", "dag_default_view").lower(),
     orientation: str = airflow_conf.get_mandatory_value("webserver", "dag_orientation"),
     catchup: bool = airflow_conf.getboolean("scheduler", "catchup_by_default"),
@@ -4062,6 +4073,7 @@ def dag(
                 max_consecutive_failed_dag_runs=max_consecutive_failed_dag_runs,
                 dagrun_timeout=dagrun_timeout,
                 sla_miss_callback=sla_miss_callback,
+                toggle_dag_callback=toggle_dag_callback,
                 default_view=default_view,
                 orientation=orientation,
                 catchup=catchup,
