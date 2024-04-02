@@ -16,23 +16,22 @@
 # under the License.
 from __future__ import annotations
 
-from typing import NamedTuple
 
-from marshmallow import Schema, fields
+def get_latest_helm_chart_version():
+    import requests
 
-
-class LogsSchema(Schema):
-    """Schema for logs."""
-
-    content = fields.Str(dump_only=True)
-    continuation_token = fields.Str(dump_only=True)
-
-
-class LogResponseObject(NamedTuple):
-    """Log Response Object."""
-
-    content: str
-    continuation_token: str | None
+    response = requests.get("https://airflow.apache.org/_gen/packages-metadata.json")
+    data = response.json()
+    for package in data:
+        if package["package-name"] == "helm-chart":
+            stable_version = package["stable-version"]
+            return stable_version
 
 
-logs_schema = LogsSchema()
+def get_latest_airflow_version():
+    import requests
+
+    response = requests.get("https://pypi.org/pypi/apache-airflow/json")
+    response.raise_for_status()
+    latest_released_version = response.json()["info"]["version"]
+    return latest_released_version
