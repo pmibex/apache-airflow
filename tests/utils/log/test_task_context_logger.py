@@ -47,7 +47,7 @@ def ti(dag_maker):
 
         nothing()
 
-    dr = dag.create_dagrun("running", run_id="abc")
+    dr = dag.create_dagrun("running", run_id="abc", triggered_by="test")
     ti = dr.get_task_instances()[0]
     return ti
 

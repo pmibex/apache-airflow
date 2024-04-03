@@ -33,6 +33,7 @@ from airflow.models import DagBag, DagRun, Pool, TaskInstance
 from airflow.models.serialized_dag import SerializedDagModel
 from airflow.settings import Session
 from airflow.utils.timezone import datetime, parse as parse_datetime, utcnow
+from airflow.utils.types import DagRunTriggeredByType
 from airflow.version import version
 from tests.test_utils.db import clear_db_pools
 
@@ -250,7 +251,12 @@ class TestApiExperimental(TestBase):
         wrong_datetime_string = quote_plus(datetime(1990, 1, 1, 1, 1, 1).isoformat())
 
         # Create DagRun
-        trigger_dag(dag_id=dag_id, run_id="test_task_instance_info_run", execution_date=execution_date)
+        trigger_dag(
+            dag_id=dag_id,
+            run_id="test_task_instance_info_run",
+            execution_date=execution_date,
+            triggered_by=DagRunTriggeredByType.TEST,
+        )
 
         # Test Correct execution
         response = self.client.get(url_template.format(dag_id, datetime_string, task_id))
@@ -289,7 +295,12 @@ class TestApiExperimental(TestBase):
         wrong_datetime_string = quote_plus(datetime(1990, 1, 1, 1, 1, 1).isoformat())
 
         # Create DagRun
-        trigger_dag(dag_id=dag_id, run_id="test_task_instance_info_run", execution_date=execution_date)
+        trigger_dag(
+            dag_id=dag_id,
+            run_id="test_task_instance_info_run",
+            execution_date=execution_date,
+            triggered_by=DagRunTriggeredByType.TEST,
+        )
 
         # Test Correct execution
         response = self.client.get(url_template.format(dag_id, datetime_string))
@@ -348,7 +359,12 @@ class TestLineageApiExperimental(TestBase):
         wrong_datetime_string = quote_plus(datetime(1990, 1, 1, 1, 1, 1).isoformat())
 
         # create DagRun
-        trigger_dag(dag_id=dag_id, run_id="test_lineage_info_run", execution_date=execution_date)
+        trigger_dag(
+            dag_id=dag_id,
+            run_id="test_lineage_info_run",
+            execution_date=execution_date,
+            triggered_by=DagRunTriggeredByType.TEST,
+        )
 
         # test correct execution
         response = self.client.get(url_template.format(dag_id, datetime_string))

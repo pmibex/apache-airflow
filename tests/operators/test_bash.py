@@ -31,7 +31,7 @@ from airflow.models.dag import DAG
 from airflow.operators.bash import BashOperator
 from airflow.utils import timezone
 from airflow.utils.state import State
-from airflow.utils.types import DagRunType
+from airflow.utils.types import DagRunTriggeredByType, DagRunType
 
 DEFAULT_DATE = datetime(2016, 1, 1, tzinfo=timezone.utc)
 END_DATE = datetime(2016, 1, 2, tzinfo=timezone.utc)
@@ -91,6 +91,7 @@ class TestBashOperator:
             start_date=utc_now,
             state=State.RUNNING,
             external_trigger=False,
+            triggered_by=DagRunTriggeredByType.TEST,
         )
 
         tmp_file = tmp_path / "testfile"

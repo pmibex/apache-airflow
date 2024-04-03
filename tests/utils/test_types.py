@@ -22,7 +22,7 @@ from airflow.models.dag import DAG
 from airflow.models.dagrun import DagRun
 from airflow.utils.session import create_session
 from airflow.utils.state import State
-from airflow.utils.types import DagRunType
+from airflow.utils.types import DagRunTriggeredByType, DagRunType
 from tests.models import DEFAULT_DATE
 
 pytestmark = pytest.mark.db_test
@@ -43,6 +43,7 @@ def test_runtype_enum_escape():
             start_date=DEFAULT_DATE,
             session=session,
             data_interval=data_interval,
+            triggered_by=DagRunTriggeredByType.TEST,
         )
 
         query = session.query(

@@ -22,7 +22,7 @@ import pytest
 from airflow.models import DagBag, Variable
 from airflow.utils import timezone
 from airflow.utils.state import State
-from airflow.utils.types import DagRunType
+from airflow.utils.types import DagRunTriggeredByType, DagRunType
 from tests.test_utils.db import clear_db_runs, clear_db_variables
 from tests.test_utils.www import _check_last_log, _check_last_log_masked_variable, check_content_in_response
 
@@ -60,6 +60,7 @@ def dagruns(bash_dag, sub_dag, xcom_dag):
         data_interval=(EXAMPLE_DAG_DEFAULT_DATE, EXAMPLE_DAG_DEFAULT_DATE),
         start_date=timezone.utcnow(),
         state=State.RUNNING,
+        triggered_by=DagRunTriggeredByType.TEST,
     )
 
     sub_dagrun = sub_dag.create_dagrun(
@@ -68,6 +69,7 @@ def dagruns(bash_dag, sub_dag, xcom_dag):
         data_interval=(EXAMPLE_DAG_DEFAULT_DATE, EXAMPLE_DAG_DEFAULT_DATE),
         start_date=timezone.utcnow(),
         state=State.RUNNING,
+        triggered_by=DagRunTriggeredByType.TEST,
     )
 
     xcom_dagrun = xcom_dag.create_dagrun(
@@ -76,6 +78,7 @@ def dagruns(bash_dag, sub_dag, xcom_dag):
         data_interval=(EXAMPLE_DAG_DEFAULT_DATE, EXAMPLE_DAG_DEFAULT_DATE),
         start_date=timezone.utcnow(),
         state=State.RUNNING,
+        triggered_by=DagRunTriggeredByType.TEST,
     )
 
     yield bash_dagrun, sub_dagrun, xcom_dagrun

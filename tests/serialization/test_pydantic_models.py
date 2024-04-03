@@ -43,7 +43,7 @@ from airflow.serialization.serialized_objects import BaseSerialization
 from airflow.settings import _ENABLE_AIP_44
 from airflow.utils import timezone
 from airflow.utils.state import State
-from airflow.utils.types import DagRunType
+from airflow.utils.types import DagRunTriggeredByType, DagRunType
 from tests.models import DEFAULT_DATE
 
 pytestmark = pytest.mark.db_test
@@ -223,6 +223,7 @@ def test_serializing_pydantic_dataset_event(session, create_task_instance, creat
         state=None,
         session=session,
         data_interval=(execution_date, execution_date),
+        triggered_by=DagRunTriggeredByType.TEST,
     )
     ds1_event = DatasetEvent(dataset_id=1)
     ds2_event_1 = DatasetEvent(dataset_id=2)

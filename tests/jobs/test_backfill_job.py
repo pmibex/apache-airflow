@@ -53,7 +53,7 @@ from airflow.utils.session import create_session
 from airflow.utils.state import DagRunState, State, TaskInstanceState
 from airflow.utils.timeout import timeout
 from airflow.utils.trigger_rule import TriggerRule
-from airflow.utils.types import DagRunType
+from airflow.utils.types import DagRunTriggeredByType, DagRunType
 from tests.listeners import dag_listener
 from tests.models import TEST_DAGS_FOLDER
 from tests.test_utils.db import (
@@ -1743,7 +1743,7 @@ class TestBackfillJob:
         job_runner = BackfillJobRunner(job=job, dag=dag)
         # create dagruns
         dr1 = dag_maker.create_dagrun(run_id=DEFAULT_DAG_RUN_ID, state=State.RUNNING)
-        dr2 = dag.create_dagrun(run_id="test2", state=State.SUCCESS)
+        dr2 = dag.create_dagrun(run_id="test2", state=State.SUCCESS, triggered_by=DagRunTriggeredByType.TEST)
 
         # create taskinstances and set states
         dr1_tis = []
@@ -1802,8 +1802,13 @@ class TestBackfillJob:
         job = Job()
         job_runner = BackfillJobRunner(job=job, dag=dag)
         # make two dagruns, only reset for one
-        dr1 = dag_maker.create_dagrun(state=State.SUCCESS)
-        dr2 = dag.create_dagrun(run_id="test2", state=State.RUNNING, session=session)
+        dr1 = dag_maker.create_dagrun(state=State.SUCCESS, triggered_by=DagRunTriggeredByType.TEST)
+        dr2 = dag.create_dagrun(
+            run_id="test2",
+            state=State.RUNNING,
+            session=session,
+            triggered_by=DagRunTriggeredByType.TEST,
+        )
         ti1 = dr1.get_task_instances(session=session)[0]
         ti2 = dr2.get_task_instances(session=session)[0]
         ti1.state = State.SCHEDULED

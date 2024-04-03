@@ -37,7 +37,7 @@ from airflow.models import DagRun
 from airflow.utils import timezone
 from airflow.utils.session import create_session, provide_session
 from airflow.utils.state import State
-from airflow.utils.types import DagRunType
+from airflow.utils.types import DagRunTriggeredByType, DagRunType
 from tests.test_utils.db import clear_db_runs
 from tests.test_utils.mapping import expand_mapped_task
 
@@ -546,6 +546,7 @@ class TestMarkDAGRun:
             start_date=date,
             execution_date=date,
             data_interval=(date, date),
+            triggered_by=DagRunTriggeredByType.TEST,
         )
 
     def _verify_dag_run_state(self, dag, date, state):
@@ -748,6 +749,7 @@ class TestMarkDAGRun:
             execution_date=self.execution_dates[0],
             data_interval=(self.execution_dates[0], self.execution_dates[0]),
             session=session,
+            triggered_by=DagRunTriggeredByType.TEST,
         )
         dr2 = self.dag2.create_dagrun(
             run_type=DagRunType.MANUAL,
@@ -755,6 +757,7 @@ class TestMarkDAGRun:
             execution_date=self.execution_dates[1],
             data_interval=(self.execution_dates[1], self.execution_dates[1]),
             session=session,
+            triggered_by=DagRunTriggeredByType.TEST,
         )
         self.dag2.create_dagrun(
             run_type=DagRunType.MANUAL,
@@ -762,6 +765,7 @@ class TestMarkDAGRun:
             execution_date=self.execution_dates[2],
             data_interval=(self.execution_dates[2], self.execution_dates[2]),
             session=session,
+            triggered_by=DagRunTriggeredByType.TEST,
         )
 
         altered = set_dag_run_state_to_success(dag=self.dag2, run_id=dr2.run_id, commit=True)

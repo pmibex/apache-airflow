@@ -62,7 +62,7 @@ from airflow.utils.python_virtualenv import prepare_virtualenv
 from airflow.utils.session import create_session
 from airflow.utils.state import DagRunState, State, TaskInstanceState
 from airflow.utils.trigger_rule import TriggerRule
-from airflow.utils.types import NOTSET, DagRunType
+from airflow.utils.types import NOTSET, DagRunTriggeredByType, DagRunType
 from tests.test_utils import AIRFLOW_MAIN_FOLDER
 from tests.test_utils.db import clear_db_runs
 
@@ -136,6 +136,7 @@ class BasePythonTest:
             execution_date=self.default_date,
             run_type=DagRunType.MANUAL,
             data_interval=(self.default_date, self.default_date),
+            triggered_by=DagRunTriggeredByType.TEST,
         )
 
     def create_ti(self, fn, **kwargs) -> TI:

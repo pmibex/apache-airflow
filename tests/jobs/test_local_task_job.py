@@ -50,7 +50,7 @@ from airflow.utils.net import get_hostname
 from airflow.utils.session import create_session
 from airflow.utils.state import State
 from airflow.utils.timeout import timeout
-from airflow.utils.types import DagRunType
+from airflow.utils.types import DagRunTriggeredByType, DagRunType
 from tests.test_utils import db
 from tests.test_utils.asserts import assert_queries_count
 from tests.test_utils.config import conf_vars
@@ -301,6 +301,7 @@ class TestLocalTaskJob:
                 start_date=DEFAULT_DATE,
                 session=session,
                 data_interval=data_interval,
+                triggered_by=DagRunTriggeredByType.TEST,
             )
 
             ti = dr.task_instances[0]
@@ -335,6 +336,7 @@ class TestLocalTaskJob:
             run_type=DagRunType.SCHEDULED,
             session=session,
             data_interval=data_interval,
+            triggered_by=DagRunTriggeredByType.TEST,
         )
         task = dag.get_task(task_id="test_mark_success_no_kill")
 
@@ -367,6 +369,7 @@ class TestLocalTaskJob:
             start_date=DEFAULT_DATE,
             session=session,
             data_interval=data_interval,
+            triggered_by=DagRunTriggeredByType.TEST,
         )
 
         ti = dr.get_task_instance(task_id=task.task_id, session=session)
@@ -468,6 +471,7 @@ class TestLocalTaskJob:
                 run_type=DagRunType.SCHEDULED,
                 session=session,
                 data_interval=data_interval,
+                triggered_by=DagRunTriggeredByType.TEST,
             )
         task = dag.get_task(task_id="test_mark_failure_externally")
         ti = dr.get_task_instance(task.task_id)
@@ -502,6 +506,7 @@ class TestLocalTaskJob:
                 run_type=DagRunType.SCHEDULED,
                 session=session,
                 data_interval=data_interval,
+                triggered_by=DagRunTriggeredByType.TEST,
             )
         task = dag.get_task(task_id="test_mark_skipped_externally")
         ti = dr.get_task_instance(task.task_id)
@@ -534,6 +539,7 @@ class TestLocalTaskJob:
                 run_type=DagRunType.SCHEDULED,
                 session=session,
                 data_interval=data_interval,
+                triggered_by=DagRunTriggeredByType.TEST,
             )
         task = dag.get_task(task_id="test_on_failure_callback_task")
         ti = TaskInstance(task=task, run_id=dr.run_id)
@@ -567,6 +573,7 @@ class TestLocalTaskJob:
                 run_type=DagRunType.SCHEDULED,
                 session=session,
                 data_interval=data_interval,
+                triggered_by=DagRunTriggeredByType.TEST,
             )
         task = dag.get_task(task_id="test_mark_success_no_kill")
 
@@ -606,6 +613,7 @@ class TestLocalTaskJob:
                 run_type=DagRunType.SCHEDULED,
                 session=session,
                 data_interval=data_interval,
+                triggered_by=DagRunTriggeredByType.TEST,
             )
         task = dag.get_task(task_id="bash_sleep")
         dag_run = dag.get_last_dagrun()
@@ -733,7 +741,9 @@ class TestLocalTaskJob:
             scheduler_job_runner = SchedulerJobRunner(job=scheduler_job, subdir=os.devnull)
             scheduler_job_runner.dagbag.bag_dag(dag, root_dag=dag)
 
-            dag_run = dag.create_dagrun(run_id="test_dagrun_fast_follow", state=State.RUNNING)
+            dag_run = dag.create_dagrun(
+                run_id="test_dagrun_fast_follow", state=State.RUNNING, triggered_by=DagRunTriggeredByType.TEST
+            )
 
             ti_by_task_id = {}
             with create_session() as session:
@@ -769,13 +779,18 @@ class TestLocalTaskJob:
         SerializedDagModel.write_dag(dag)
 
         dr = dag.create_dagrun(
-            run_id="test_1", state=State.RUNNING, execution_date=DEFAULT_DATE, data_interval=data_interval
+            run_id="test_1",
+            state=State.RUNNING,
+            execution_date=DEFAULT_DATE,
+            data_interval=data_interval,
+            triggered_by=DagRunTriggeredByType.TEST,
         )
         dr2 = dag.create_dagrun(
             run_id="test_2",
             state=State.RUNNING,
             execution_date=DEFAULT_DATE + datetime.timedelta(hours=1),
             data_interval=data_interval,
+            triggered_by=DagRunTriggeredByType.TEST,
         )
         task_k = dag.get_task("K")
         task_l = dag.get_task("L")
@@ -991,7 +1006,11 @@ class TestSigtermOnRunner:
 
         data_interval = dag.infer_automated_data_interval(DEFAULT_LOGICAL_DATE)
         dag_run = dag.create_dagrun(
-            state=State.RUNNING, run_id=run_id, execution_date=execution_date, data_interval=data_interval
+            state=State.RUNNING,
+            run_id=run_id,
+            execution_date=execution_date,
+            data_interval=data_interval,
+            triggered_by=DagRunTriggeredByType.TEST,
         )
         ti = TaskInstance(task=task, run_id=dag_run.run_id)
         ti.refresh_from_db()

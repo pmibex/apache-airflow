@@ -42,6 +42,7 @@ from airflow.utils.sqlalchemy import (
 )
 from airflow.utils.state import State
 from airflow.utils.timezone import utcnow
+from airflow.utils.types import DagRunTriggeredByType
 
 pytestmark = pytest.mark.db_test
 
@@ -83,6 +84,7 @@ class TestSqlAlchemyUtils:
             start_date=start_date,
             session=self.session,
             data_interval=dag.timetable.infer_manual_data_interval(run_after=execution_date),
+            triggered_by=DagRunTriggeredByType.TEST,
         )
 
         assert execution_date == run.execution_date
@@ -115,6 +117,7 @@ class TestSqlAlchemyUtils:
                 start_date=start_date,
                 session=self.session,
                 data_interval=dag.timetable.infer_manual_data_interval(run_after=start_date),
+                triggered_by=DagRunTriggeredByType.TEST,
             )
         dag.clear()
 

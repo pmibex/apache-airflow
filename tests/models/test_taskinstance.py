@@ -93,7 +93,7 @@ from airflow.utils.session import create_session, provide_session
 from airflow.utils.state import DagRunState, State, TaskInstanceState
 from airflow.utils.task_group import TaskGroup
 from airflow.utils.task_instance_session import set_current_task_instance_session
-from airflow.utils.types import DagRunType
+from airflow.utils.types import DagRunTriggeredByType, DagRunType
 from airflow.utils.xcom import XCOM_RETURN_KEY
 from tests.models import DEFAULT_DATE, TEST_DAGS_FOLDER
 from tests.test_utils import db
@@ -1701,7 +1701,12 @@ class TestTaskInstance:
         assert ti.xcom_pull(task_ids="test_xcom", key=key) == value
         ti.run()
         exec_date += datetime.timedelta(days=1)
-        dr = ti.task.dag.create_dagrun(run_id="test2", data_interval=(exec_date, exec_date), state=None)
+        dr = ti.task.dag.create_dagrun(
+            run_id="test2",
+            data_interval=(exec_date, exec_date),
+            state=None,
+            triggered_by=DagRunTriggeredByType.TEST,
+        )
         ti = TI(task=ti.task, run_id=dr.run_id)
         ti.run()
         # We have set a new execution date (and did not pass in
@@ -1941,6 +1946,7 @@ class TestTaskInstance:
             run_id="2",
             session=session,
             data_interval=(execution_date, execution_date),
+            triggered_by=DagRunTriggeredByType.TEST,
         )
         assert ti1 in session
         ti2 = dr.task_instances[0]
@@ -2708,6 +2714,7 @@ class TestTaskInstance:
             execution_date=day_1,
             state=State.RUNNING,
             run_type=DagRunType.MANUAL,
+            triggered_by=DagRunTriggeredByType.TEST,
         )
 
         dagrun_2 = dag.create_dagrun(
@@ -2715,6 +2722,7 @@ class TestTaskInstance:
             state=State.RUNNING,
             run_type=DagRunType.MANUAL,
             data_interval=(day_1, day_2),
+            triggered_by=DagRunTriggeredByType.TEST,
         )
 
         ti_1 = dagrun_1.get_task_instance(task.task_id)
@@ -2757,6 +2765,7 @@ class TestTaskInstance:
             state=None,
             session=session,
             data_interval=(execution_date, execution_date),
+            triggered_by=DagRunTriggeredByType.TEST,
         )
         ds1_event = DatasetEvent(dataset_id=1)
         ds2_event_1 = DatasetEvent(dataset_id=2)
@@ -3042,6 +3051,7 @@ class TestTaskInstance:
             state=None,
             session=session,
             data_interval=(execution_date, execution_date),
+            triggered_by=DagRunTriggeredByType.TEST,
         )
         ti1 = dr.get_task_instance(task1.task_id, session=session)
         ti1.task = task1
@@ -3187,6 +3197,7 @@ class TestTaskInstance:
             state=None,
             session=session,
             data_interval=(execution_date, execution_date),
+            triggered_by=DagRunTriggeredByType.TEST,
         )
 
         ti1 = dr.get_task_instance(task1.task_id, session=session)

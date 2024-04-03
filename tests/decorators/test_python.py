@@ -37,7 +37,7 @@ from airflow.utils.state import State
 from airflow.utils.task_group import TaskGroup
 from airflow.utils.task_instance_session import set_current_task_instance_session
 from airflow.utils.trigger_rule import TriggerRule
-from airflow.utils.types import DagRunType
+from airflow.utils.types import DagRunTriggeredByType, DagRunType
 from airflow.utils.xcom import XCOM_RETURN_KEY
 from tests.operators.test_python import BasePythonTest
 
@@ -448,6 +448,7 @@ class TestAirflowTaskDecorator(BasePythonTest):
             execution_date=DEFAULT_DATE,
             state=State.RUNNING,
             data_interval=self.dag.timetable.infer_manual_data_interval(run_after=DEFAULT_DATE),
+            triggered_by=DagRunTriggeredByType.TEST,
         )
 
         ret.operator.run(start_date=DEFAULT_DATE, end_date=DEFAULT_DATE)
@@ -508,6 +509,7 @@ class TestAirflowTaskDecorator(BasePythonTest):
             execution_date=DEFAULT_DATE,
             state=State.RUNNING,
             data_interval=self.dag.timetable.infer_manual_data_interval(run_after=DEFAULT_DATE),
+            triggered_by=DagRunTriggeredByType.TEST,
         )
 
         bigger_number.operator.run(start_date=DEFAULT_DATE, end_date=DEFAULT_DATE)

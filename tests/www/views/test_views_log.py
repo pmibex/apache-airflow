@@ -38,7 +38,7 @@ from airflow.utils.log.file_task_handler import FileTaskHandler
 from airflow.utils.log.logging_mixin import ExternalLoggingMixin
 from airflow.utils.session import create_session
 from airflow.utils.state import DagRunState, TaskInstanceState
-from airflow.utils.types import DagRunType
+from airflow.utils.types import DagRunTriggeredByType, DagRunType
 from airflow.www.app import create_app
 from tests.test_utils.config import conf_vars
 from tests.test_utils.db import clear_db_dags, clear_db_runs
@@ -159,6 +159,7 @@ def tis(dags, session):
         start_date=DEFAULT_DATE,
         state=DagRunState.RUNNING,
         session=session,
+        triggered_by=DagRunTriggeredByType.TEST,
     )
     (ti,) = dagrun.task_instances
     ti.try_number = 1
@@ -170,6 +171,7 @@ def tis(dags, session):
         start_date=DEFAULT_DATE,
         state=DagRunState.RUNNING,
         session=session,
+        triggered_by=DagRunTriggeredByType.TEST,
     )
     (ti_removed_dag,) = dagrun_removed.task_instances
     ti_removed_dag.try_number = 1

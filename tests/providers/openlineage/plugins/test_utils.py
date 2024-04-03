@@ -40,6 +40,7 @@ from airflow.providers.openlineage.utils.utils import (
 from airflow.utils import timezone
 from airflow.utils.log.secrets_masker import _secrets_masker
 from airflow.utils.state import State
+from airflow.utils.types import DagRunTriggeredByType
 
 
 class SafeStrDict(dict):
@@ -63,7 +64,10 @@ def test_get_dagrun_start_end():
     dag_model = DagModel.get_dagmodel(dag.dag_id)
     run_id = str(uuid.uuid1())
     dagrun = dag.create_dagrun(
-        state=State.NONE, run_id=run_id, data_interval=dag.get_next_data_interval(dag_model)
+        state=State.NONE,
+        run_id=run_id,
+        data_interval=dag.get_next_data_interval(dag_model),
+        triggered_by=DagRunTriggeredByType.TEST,
     )
     assert dagrun.data_interval_start is not None
     start_date_tz = datetime.datetime(2022, 1, 1, tzinfo=timezone.utc)

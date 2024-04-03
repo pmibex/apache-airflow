@@ -38,7 +38,7 @@ from airflow.operators.empty import EmptyOperator
 from airflow.utils import timezone
 from airflow.utils.session import create_session
 from airflow.utils.state import State
-from airflow.utils.types import DagRunType
+from airflow.utils.types import DagRunTriggeredByType, DagRunType
 from tests.test_utils.compat import ParseImportError
 from tests.test_utils.config import conf_vars, env_vars
 from tests.test_utils.db import (
@@ -495,6 +495,7 @@ class TestDagFileProcessor:
                 run_type=DagRunType.SCHEDULED,
                 data_interval=dag.infer_automated_data_interval(DEFAULT_DATE),
                 session=session,
+                triggered_by=DagRunTriggeredByType.TEST,
             )
             task = dag.get_task(task_id="run_this_first")
             ti = TaskInstance(task, run_id=dagrun.run_id, state=State.RUNNING)
@@ -529,6 +530,7 @@ class TestDagFileProcessor:
                 run_type=DagRunType.SCHEDULED,
                 data_interval=dag.infer_automated_data_interval(DEFAULT_DATE),
                 session=session,
+                triggered_by=DagRunTriggeredByType.TEST,
             )
             task = dag.get_task(task_id="run_this_first")
             ti = TaskInstance(task, run_id=dagrun.run_id, state=State.QUEUED)
@@ -564,6 +566,7 @@ class TestDagFileProcessor:
                 run_type=DagRunType.SCHEDULED,
                 data_interval=dag.infer_automated_data_interval(DEFAULT_DATE),
                 session=session,
+                triggered_by=DagRunTriggeredByType.TEST,
             )
             ti = TaskInstance(task, run_id=dagrun.run_id, state=State.RUNNING)
             ti.hostname = "test_hostname"
@@ -597,6 +600,7 @@ class TestDagFileProcessor:
                 run_type=DagRunType.SCHEDULED,
                 data_interval=dag.infer_automated_data_interval(DEFAULT_DATE),
                 session=session,
+                triggered_by=DagRunTriggeredByType.TEST,
             )
             ti = dagrun.get_task_instance(task.task_id)
             ti.refresh_from_task(task)

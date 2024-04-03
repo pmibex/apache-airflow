@@ -36,7 +36,7 @@ from airflow.models.pool import Pool
 from airflow.utils import timezone
 from airflow.utils.session import create_session
 from airflow.utils.state import DagRunState
-from airflow.utils.types import DagRunType
+from airflow.utils.types import DagRunTriggeredByType, DagRunType
 from tests.test_utils.db import clear_db_pools
 
 pytestmark = pytest.mark.db_test
@@ -89,6 +89,7 @@ class TestLocalClient:
                 external_trigger=True,
                 dag_hash=expected_dag_hash,
                 data_interval=expected_data_interval,
+                triggered_by=DagRunTriggeredByType.CLI,
             )
             mock.reset_mock()
 
@@ -102,6 +103,7 @@ class TestLocalClient:
                 external_trigger=True,
                 dag_hash=expected_dag_hash,
                 data_interval=expected_data_interval,
+                triggered_by=DagRunTriggeredByType.CLI,
             )
             mock.reset_mock()
 
@@ -116,6 +118,7 @@ class TestLocalClient:
                 external_trigger=True,
                 dag_hash=expected_dag_hash,
                 data_interval=expected_data_interval,
+                triggered_by=DagRunTriggeredByType.CLI,
             )
             mock.reset_mock()
 
@@ -130,6 +133,7 @@ class TestLocalClient:
                 external_trigger=True,
                 dag_hash=expected_dag_hash,
                 data_interval=expected_data_interval,
+                triggered_by=DagRunTriggeredByType.CLI,
             )
             mock.reset_mock()
 
@@ -145,6 +149,7 @@ class TestLocalClient:
                 conf={},
                 run_type=DagRunType.MANUAL,
                 data_interval=(EXECDATE, EXECDATE + pendulum.duration(hours=1)),
+                triggered_by=DagRunTriggeredByType.CLI,
             )
             expected_dag_run = {
                 "conf": {},
