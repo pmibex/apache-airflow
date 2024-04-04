@@ -71,7 +71,10 @@ def is_otel_metrics_enabled() -> bool:
 
 def is_listener_enabled() -> bool:
     """Check whether otel listener is disabled."""
-    return is_otel_traces_enabled() is not True and os.getenv("OTEL_LISTENER_DISABLED", "false").lower() == "false"
+    return (
+        is_otel_traces_enabled() is not True
+        and os.getenv("OTEL_LISTENER_DISABLED", "false").lower() == "false"
+    )
 
 
 OTEL_CONN_ID = "OTEL_CONN_ID"
@@ -146,7 +149,9 @@ class OtelHook(BaseHook, LoggingMixin):
                 self.headers = {"Content-Type": "application/json"}
                 if self.api_key is not None and self.header_name is not None:
                     self.headers[self.header_name] = self.api_key
-                self.resource = Resource(attributes={HOST_NAME: get_hostname(), SERVICE_NAME: DEFAULT_SERVICE_NAME})
+                self.resource = Resource(
+                    attributes={HOST_NAME: get_hostname(), SERVICE_NAME: DEFAULT_SERVICE_NAME}
+                )
                 self.provider = TracerProvider(resource=self.resource)
                 self.processor = SimpleSpanProcessor(
                     span_exporter=OTLPSpanExporter(endpoint=f"{self.url}/v1/traces", headers=self.headers)
@@ -166,7 +171,9 @@ class OtelHook(BaseHook, LoggingMixin):
             protocol = "https" if conf.getboolean("traces", "otel_ssl_active") else "http"
             self.url = f"{protocol}://{conf.get('traces', 'otel_host')}:{conf.get('traces', 'otel_port')}"
             self.headers = {"Content-Type": "application/json"}
-            self.resource = Resource(attributes={HOST_NAME: get_hostname(), SERVICE_NAME: conf.get("traces", "otel_service")})
+            self.resource = Resource(
+                attributes={HOST_NAME: get_hostname(), SERVICE_NAME: conf.get("traces", "otel_service")}
+            )
             self.processor = SimpleSpanProcessor(
                 span_exporter=OTLPSpanExporter(endpoint=f"{self.url}/v1/traces", headers=self.headers)
             )
@@ -176,7 +183,7 @@ class OtelHook(BaseHook, LoggingMixin):
 
         if self.ready is True:
             self.log.debug("OTEL HOOK tracer initialized.")
-        
+
         if is_otel_metrics_enabled() is False:
             try:
                 conn = self._get_conn()
@@ -189,7 +196,9 @@ class OtelHook(BaseHook, LoggingMixin):
                 self.headers = {"Content-Type": "application/json"}
                 if self.api_key is not None and self.header_name is not None:
                     self.headers[self.header_name] = self.api_key
-                self.resource = Resource(attributes={HOST_NAME: get_hostname(), SERVICE_NAME: DEFAULT_SERVICE_NAME})
+                self.resource = Resource(
+                    attributes={HOST_NAME: get_hostname(), SERVICE_NAME: DEFAULT_SERVICE_NAME}
+                )
                 readers = [
                     PeriodicExportingMetricReader(
                         OTLPMetricExporter(endpoint=f"{self.url}/v1/metrics", headers=self.headers),
@@ -199,7 +208,7 @@ class OtelHook(BaseHook, LoggingMixin):
                 metrics.set_meter_provider(
                     MeterProvider(resource=self.resource, metric_readers=readers, shutdown_on_exit=False)
                 )
-            
+
             except Exception:
                 self.ready = False
                 self.log.debug(
@@ -213,7 +222,6 @@ class OtelHook(BaseHook, LoggingMixin):
             self.metric_logger = SafeOtelLogger(metrics.get_meter_provider(), "airflow")
             self.log.debug("OTEL HOOK metrics initialized.")
 
-
     def _get_conn(self):
         conn = self.get_connection(self.otel_conn_id)
         return conn
@@ -226,7 +234,6 @@ class OtelHook(BaseHook, LoggingMixin):
 
             if self.ready is True:
                 tracer = self._get_tracer(library_name="python_function")
-                log.info(f"otel_trace_enabled:{is_otel_traces_enabled()} and is_listener_enabled: {is_listener_enabled()}")
                 if "task_instance" in kwargs and (
                     is_otel_traces_enabled() is True or is_listener_enabled() is True
                 ):
