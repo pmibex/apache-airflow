@@ -17,10 +17,12 @@
 from __future__ import annotations
 
 import logging
+
 from airflow.utils.hashlib_wrapper import md5
 from airflow.utils.state import TaskInstanceState
 
 log = logging.getLogger(__name__)
+
 
 def gen_trace_id(dag_run) -> str:
     """Generate trace id from dag_run."""
