@@ -239,12 +239,25 @@ Deprecated extras
 
 The ``deprecated`` extras are deprecated extras from Airflow 1 that will be removed in future versions.
 
-  .. START DEPRECATED EXTRAS HERE
+  .. START REGULAR EXTRAS HERE
 
-atlas, aws, azure, cassandra, crypto, druid, gcp, gcp-api, hdfs, hive, kubernetes, mssql, pinot, s3,
-spark, webhdfs, winrm
+aiobotocore, airbyte, alibaba, all, all-core, all-dbs, amazon, apache-atlas, apache-beam, apache-
+cassandra, apache-drill, apache-druid, apache-flink, apache-hdfs, apache-hive, apache-impala,
+apache-kafka, apache-kylin, apache-livy, apache-pig, apache-pinot, apache-spark, apache-webhdfs,
+apprise, arangodb, asana, async, atlas, atlassian-jira, aws, azure, cassandra, celery, cgroups,
+cloudant, cncf-kubernetes, cohere, common-io, common-sql, crypto, databricks, datadog, dbt-cloud,
+deprecated-api, dingding, discord, docker, druid, elasticsearch, exasol, fab, facebook, ftp, gcp,
+gcp_api, github, github-enterprise, google, google-auth, graphviz, grpc, hashicorp, hdfs, hive,
+http, imap, influxdb, jdbc, jenkins, kerberos, kubernetes, ldap, leveldb, microsoft-azure,
+microsoft-mssql, microsoft-psrp, microsoft-winrm, mongo, mssql, mysql, neo4j, odbc, openai,
+openfaas, openlineage, opensearch, opentelemetry, opsgenie, oracle, otel, pagerduty, pandas,
+papermill, password, pgvector, pinecone, pinot, postgres, presto, pydantic, qdrant, rabbitmq, redis,
+s3, s3fs, salesforce, samba, saml, segment, sendgrid, sentry, sftp, singularity, slack, smtp,
+snowflake, spark, sqlite, ssh, statsd, tableau, tabular, telegram, teradata, trino, uv, vertica,
+virtualenv, weaviate, webhdfs, winrm, yandex, zendesk
 
-  .. END DEPRECATED EXTRAS HERE
+  .. END REGULAR EXTRAS HERE
+
 
 -----
 
