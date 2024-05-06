@@ -154,6 +154,7 @@ if TYPE_CHECKING:
 PAGE_SIZE = conf.getint("webserver", "page_size")
 FILTER_TAGS_COOKIE = "tags_filter"
 FILTER_STATUS_COOKIE = "dag_status_filter"
+FILTER_TAGS_AND_LOGIC = "use_and_filter"
 LINECHART_X_AXIS_TICKFORMAT = (
     "function (d, i) { let xLabel;"
     "if (i === undefined) {xLabel = d3.time.format('%H:%M, %d %b %Y')(new Date(parseInt(d)));"
@@ -747,6 +748,7 @@ class Airflow(AirflowBaseView):
         current_page = request.args.get("page", default=0, type=int)
         arg_search_query = request.args.get("search")
         arg_tags_filter = request.args.getlist("tags")
+        use_and = (request.args.get("use_and") == "true")
         arg_status_filter = request.args.get("status")
         arg_sorting_key = request.args.get("sorting_key", "dag_id")
         arg_sorting_direction = request.args.get("sorting_direction", default="asc")
@@ -757,6 +759,7 @@ class Airflow(AirflowBaseView):
             return redirect(url_for("Airflow.index"))
 
         cookie_val = flask_session.get(FILTER_TAGS_COOKIE)
+        flask_session[FILTER_TAGS_COOKIE] = arg_tags_filter
         if arg_tags_filter:
             flask_session[FILTER_TAGS_COOKIE] = ",".join(arg_tags_filter)
         elif cookie_val:
@@ -798,7 +801,13 @@ class Airflow(AirflowBaseView):
                 )
 
             if arg_tags_filter:
-                dags_query = dags_query.where(DagModel.tags.any(DagTag.name.in_(arg_tags_filter)))
+                if use_and:
+                    conditions = [DagModel.tags.any(DagTag.name == tag) for tag in arg_tags_filter]
+                    dags_query = dags_query.filter(and_(*conditions))
+                    flask_session[FILTER_TAGS_AND_LOGIC] = True
+                else:
+                    dags_query = dags_query.where(DagModel.tags.any(DagTag.name.in_(arg_tags_filter)))
+                    flask_session[FILTER_TAGS_AND_LOGIC] = False
 
             dags_query = dags_query.where(DagModel.dag_id.in_(filter_dag_ids))
             filtered_dag_count = get_query_count(dags_query, session=session)
@@ -1054,6 +1063,7 @@ class Airflow(AirflowBaseView):
                 search=escape(arg_search_query) if arg_search_query else None,
                 status=arg_status_filter or None,
                 tags=arg_tags_filter or None,
+                use_and=use_and or None,
                 sorting_key=arg_sorting_key or None,
                 sorting_direction=arg_sorting_direction or None,
             ),
@@ -1068,6 +1078,7 @@ class Airflow(AirflowBaseView):
             status_count_running=status_count_running,
             status_count_failed=status_count_failed,
             tags_filter=arg_tags_filter,
+            use_and=use_and,
             sorting_key=arg_sorting_key,
             sorting_direction=arg_sorting_direction,
             auto_refresh_interval=conf.getint("webserver", "auto_refresh_interval"),
