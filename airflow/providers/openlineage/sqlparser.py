@@ -190,8 +190,7 @@ class SQLParser:
         if not len(parse_result.column_lineage):
             return
         for dataset in datasets:
-            if not dataset.facets:
-                continue
+            dataset.facets = dataset.facets or {}
             dataset.facets["columnLineage"] = column_lineage_dataset.ColumnLineageDatasetFacet(
                 fields={
                     column_lineage.descendant.name: column_lineage_dataset.Fields(

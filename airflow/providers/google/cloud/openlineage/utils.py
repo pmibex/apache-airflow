@@ -19,20 +19,18 @@ from __future__ import annotations
 
 import copy
 import json
+from msilib import schema
 import traceback
 from typing import TYPE_CHECKING, Any
 
 from attr import define, field
-from openlineage.client.facet import (
+from openlineage.client.facet_v2 import (
     BaseFacet,
-    ColumnLineageDatasetFacet,
-    ColumnLineageDatasetFacetFieldsAdditional,
-    ColumnLineageDatasetFacetFieldsAdditionalInputFields,
-    DocumentationDatasetFacet,
-    ErrorMessageRunFacet,
-    OutputStatisticsOutputDatasetFacet,
-    SchemaDatasetFacet,
-    SchemaField,
+    column_lineage_dataset,
+    documentation_dataset,
+    error_message_run,external_query_run,
+    output_statistics_output_dataset,
+    schema_dataset
 )
 from openlineage.client.run import Dataset
 
@@ -49,13 +47,13 @@ BIGQUERY_URI = "bigquery"
 def get_facets_from_bq_table(table: Table) -> dict[Any, Any]:
     """Get facets from BigQuery table object."""
     facets = {
-        "schema": SchemaDatasetFacet(
+        "schema": schema_dataset.SchemaDatasetFacet(
             fields=[
-                SchemaField(name=field.name, type=field.field_type, description=field.description)
+                schema_dataset.SchemaDatasetFacetFields(name=field.name, type=field.field_type, description=field.description)
                 for field in table.schema
             ]
         ),
-        "documentation": DocumentationDatasetFacet(description=table.description or ""),
+        "documentation": documentation_dataset.DocumentationDatasetFacet(description=table.description or ""),
     }
 
     return facets
@@ -64,7 +62,7 @@ def get_facets_from_bq_table(table: Table) -> dict[Any, Any]:
 def get_identity_column_lineage_facet(
     field_names: list[str],
     input_datasets: list[Dataset],
-) -> ColumnLineageDatasetFacet:
+) -> column_lineage_dataset.ColumnLineageDatasetFacet:
     """
     Get column lineage facet.
 
@@ -74,11 +72,11 @@ def get_identity_column_lineage_facet(
     if field_names and not input_datasets:
         raise ValueError("When providing `field_names` You must provide at least one `input_dataset`.")
 
-    column_lineage_facet = ColumnLineageDatasetFacet(
+    column_lineage_facet = column_lineage_dataset.ColumnLineageDatasetFacet(
         fields={
-            field: ColumnLineageDatasetFacetFieldsAdditional(
+            field: column_lineage_dataset.Fields(
                 inputFields=[
-                    ColumnLineageDatasetFacetFieldsAdditionalInputFields(
+                    column_lineage_dataset.InputField(
                         namespace=dataset.namespace, name=dataset.name, field=field
                     )
                     for dataset in input_datasets
@@ -213,7 +211,7 @@ class _BigQueryOpenLineageMixin:
             return OperatorLineage()
 
         run_facets: dict[str, BaseFacet] = {
-            "externalQuery": ExternalQueryRunFacet(externalQueryId=self.job_id, source="bigquery")
+            "externalQuery": external_query_run.ExternalQueryRunFacet(externalQueryId=self.job_id, source="bigquery")
         }
 
         job_facets = {"sql": SqlJobFacet(query=SQLParser.normalize_sql(self.sql))}
@@ -272,7 +270,7 @@ class _BigQueryOpenLineageMixin:
             # TODO: remove BigQueryErrorRunFacet in next release
             run_facets.update(
                 {
-                    "errorMessage": ErrorMessageRunFacet(
+                    "errorMessage": error_message_run.ErrorMessageRunFacet(
                         message=f"{e}: {exception_msg}",
                         programmingLanguage="python",
                     ),
@@ -329,7 +327,7 @@ class _BigQueryOpenLineageMixin:
         )
 
     @staticmethod
-    def _get_statistics_dataset_facet(properties) -> OutputStatisticsOutputDatasetFacet | None:
+    def _get_statistics_dataset_facet(properties) -> output_statistics_output_dataset.OutputStatisticsOutputDatasetFacet | None:
         query_plan = get_from_nullable_chain(properties, chain=["statistics", "query", "queryPlan"])
         if not query_plan:
             return None
@@ -338,7 +336,7 @@ class _BigQueryOpenLineageMixin:
         out_rows = out_stage.get("recordsWritten", None)
         out_bytes = out_stage.get("shuffleOutputBytes", None)
         if out_bytes and out_rows:
-            return OutputStatisticsOutputDatasetFacet(rowCount=int(out_rows), size=int(out_bytes))
+            return output_statistics_output_dataset.OutputStatisticsOutputDatasetFacet(rowCount=int(out_rows), size=int(out_bytes))
         return None
 
     def _get_dataset(self, table: dict) -> Dataset:
@@ -358,7 +356,7 @@ class _BigQueryOpenLineageMixin:
             else {},
         )
 
-    def _get_table_schema_safely(self, table_name: str) -> SchemaDatasetFacet | None:
+    def _get_table_schema_safely(self, table_name: str) -> schema_dataset.SchemaDatasetFacet | None:
         try:
             return self._get_table_schema(table_name)
         except Exception as e:
@@ -366,7 +364,7 @@ class _BigQueryOpenLineageMixin:
                 self.log.warning("Could not extract output schema from bigquery. %s", e)
         return None
 
-    def _get_table_schema(self, table: str) -> SchemaDatasetFacet | None:
+    def _get_table_schema(self, table: str) -> schema_dataset.SchemaDatasetFacet | None:
         bq_table = self.client.get_table(table)
 
         if not bq_table._properties:
@@ -376,9 +374,9 @@ class _BigQueryOpenLineageMixin:
         if not fields:
             return None
 
-        return SchemaDatasetFacet(
+        return schema_dataset.SchemaDatasetFacet(
             fields=[
-                SchemaField(
+                schema_dataset.SchemaDatasetFacetFields(
                     name=field.get("name"),
                     type=field.get("type"),
                     description=field.get("description"),

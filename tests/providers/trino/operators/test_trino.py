@@ -20,8 +20,8 @@ from __future__ import annotations
 from unittest import mock
 
 import pytest
-from openlineage.client.facet import SchemaDatasetFacet, SchemaField, SqlJobFacet
-from openlineage.client.run import Dataset
+from openlineage.client.event_v2 import Dataset
+from openlineage.client.facet_v2 import schema_dataset, sql_job
 
 from airflow.exceptions import AirflowProviderDeprecationWarning
 from airflow.models.connection import Connection
@@ -96,14 +96,14 @@ def test_execute_openlineage_events():
             namespace="trino://trino:8080",
             name=f"{DB_NAME}.{DB_SCHEMA_NAME}.customer",
             facets={
-                "schema": SchemaDatasetFacet(
+                "schema": schema_dataset.SchemaDatasetFacet(
                     fields=[
-                        SchemaField(name="custkey", type="bigint"),
-                        SchemaField(name="name", type="varchar(25)"),
-                        SchemaField(name="address", type="varchar(40)"),
-                        SchemaField(name="nationkey", type="bigint"),
-                        SchemaField(name="phone", type="varchar(15)"),
-                        SchemaField(name="acctbal", type="double"),
+                        schema_dataset.SchemaDatasetFacetFields(name="custkey", type="bigint"),
+                        schema_dataset.SchemaDatasetFacetFields(name="name", type="varchar(25)"),
+                        schema_dataset.SchemaDatasetFacetFields(name="address", type="varchar(40)"),
+                        schema_dataset.SchemaDatasetFacetFields(name="nationkey", type="bigint"),
+                        schema_dataset.SchemaDatasetFacetFields(name="phone", type="varchar(15)"),
+                        schema_dataset.SchemaDatasetFacetFields(name="acctbal", type="double"),
                     ]
                 )
             },
@@ -112,4 +112,4 @@ def test_execute_openlineage_events():
 
     assert len(lineage.outputs) == 0
 
-    assert lineage.job_facets == {"sql": SqlJobFacet(query=sql)}
+    assert lineage.job_facets == {"sql": sql_job.SQLJobFacet(query=sql)}
