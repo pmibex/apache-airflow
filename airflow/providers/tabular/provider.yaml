@@ -39,7 +39,7 @@ dependencies:
   - apache-airflow>=2.7.0
 
 devel-dependencies:
-  - pyiceberg>=0.5.0
+  - pyiceberg>=0.5.1
 
 integrations:
   - integration-name: Tabular
@@ -51,6 +51,10 @@ hooks:
   - integration-name: Tabular
     python-modules:
       - airflow.providers.tabular.hooks.tabular
+sensors:
+  - integration-name: Tabular
+    python-modules:
+      - airflow.providers.tabular.sensors.tabular
 
 connection-types:
   - hook-class-name: airflow.providers.tabular.hooks.tabular.TabularHook
