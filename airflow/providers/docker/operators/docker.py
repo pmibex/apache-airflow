@@ -433,7 +433,8 @@ class DockerOperator(BaseOperator):
             for log_chunk in logstream:
                 log_chunk = stringify(log_chunk).strip()
                 log_lines.append(log_chunk)
-                self.log.info("%s", log_chunk)
+                for chunk_line in log_chunk.splitlines():
+                    self.log.info("%s", chunk_line)
 
             result = self.cli.wait(self.container["Id"])
             if result["StatusCode"] in self.skip_on_exit_code:
