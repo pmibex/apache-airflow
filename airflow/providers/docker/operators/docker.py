@@ -431,7 +431,7 @@ class DockerOperator(BaseOperator):
 
             log_lines = []
             for log_chunk in logstream:
-                log_chunk = stringify(log_chunk).strip()
+                log_chunk = stringify(log_chunk)
                 log_lines.append(log_chunk)
                 for chunk_line in log_chunk.splitlines():
                     self.log.info("%s", chunk_line)
