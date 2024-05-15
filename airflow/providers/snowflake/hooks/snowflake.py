@@ -468,7 +468,13 @@ class SnowflakeHook(DbApiHook):
         return urlparse(uri).hostname
 
     def get_openlineage_database_specific_lineage(self, _) -> OperatorLineage | None:
-        from openlineage.client.facet_v2 import external_query_run
+        if TYPE_CHECKING:
+            from openlineage.client.generated.external_query_run import ExternalQueryRunFacet
+        else:
+            try:
+                from openlineage.client.generated.external_query_run import ExternalQueryRunFacet
+            except ImportError:
+                from openlineage.client.facet import ExternalQueryRunFacet
 
         from airflow.providers.openlineage.extractors import OperatorLineage
         from airflow.providers.openlineage.sqlparser import SQLParser
@@ -479,7 +485,7 @@ class SnowflakeHook(DbApiHook):
         if self.query_ids:
             return OperatorLineage(
                 run_facets={
-                    "externalQuery": external_query_run.ExternalQueryRunFacet(
+                    "externalQuery": ExternalQueryRunFacet(
                         externalQueryId=self.query_ids[0], source=namespace
                     )
                 }

@@ -20,8 +20,21 @@ import json
 from unittest import mock
 
 import pytest
-from openlineage.client.event_v2 import Dataset
-from openlineage.client.facet_v2 import schema_dataset, sql_job, symlinks_dataset
+
+try:
+    from openlineage.client.event_v2 import Dataset
+    from openlineage.client.generated.schema_dataset import SchemaDatasetFacet, SchemaDatasetFacetFields
+    from openlineage.client.generated.sql_job import SQLJobFacet
+    from openlineage.client.generated.symlinks_dataset import Identifier, SymlinksDatasetFacet
+except ImportError:
+    from openlineage.client.facet import (
+        SchemaDatasetFacet,
+        SchemaField as SchemaDatasetFacetFields,
+        SqlJobFacet as SQLJobFacet,
+        SymlinksDatasetFacet,
+        SymlinksDatasetFacetIdentifiers as Identifier,
+    )
+    from openlineage.client.run import Dataset
 
 from airflow.exceptions import AirflowException, TaskDeferred
 from airflow.models import DAG, DagRun, TaskInstance
@@ -286,38 +299,38 @@ class TestAthenaOperator:
                     namespace="awsathena://athena.eu-west-1.amazonaws.com",
                     name="AwsDataCatalog.TEST_DATABASE.DISCOUNTS",
                     facets={
-                        "symlinks": symlinks_dataset.SymlinksDatasetFacet(
+                        "symlinks": SymlinksDatasetFacet(
                             identifiers=[
-                                symlinks_dataset.Identifier(
+                                Identifier(
                                     namespace="s3://bucket",
                                     name="/discount/data/path/",
                                     type="TABLE",
                                 )
                             ],
                         ),
-                        "schema": schema_dataset.SchemaDatasetFacet(
+                        "schema": SchemaDatasetFacet(
                             fields=[
-                                schema_dataset.SchemaDatasetFacetFields(
+                                SchemaDatasetFacetFields(
                                     name="ID",
                                     type="int",
                                     description="from deserializer",
                                 ),
-                                schema_dataset.SchemaDatasetFacetFields(
+                                SchemaDatasetFacetFields(
                                     name="AMOUNT_OFF",
                                     type="int",
                                     description="from deserializer",
                                 ),
-                                schema_dataset.SchemaDatasetFacetFields(
+                                SchemaDatasetFacetFields(
                                     name="CUSTOMER_EMAIL",
                                     type="varchar",
                                     description="from deserializer",
                                 ),
-                                schema_dataset.SchemaDatasetFacetFields(
+                                SchemaDatasetFacetFields(
                                     name="STARTS_ON",
                                     type="timestamp",
                                     description="from deserializer",
                                 ),
-                                schema_dataset.SchemaDatasetFacetFields(
+                                SchemaDatasetFacetFields(
                                     name="ENDS_ON",
                                     type="timestamp",
                                     description="from deserializer",
@@ -332,18 +345,18 @@ class TestAthenaOperator:
                     namespace="awsathena://athena.eu-west-1.amazonaws.com",
                     name="AwsDataCatalog.TEST_DATABASE.TEST_TABLE",
                     facets={
-                        "symlinks": symlinks_dataset.SymlinksDatasetFacet(
+                        "symlinks": SymlinksDatasetFacet(
                             identifiers=[
-                                symlinks_dataset.Identifier(
+                                Identifier(
                                     namespace="s3://bucket",
                                     name="/data/test_table/data/path",
                                     type="TABLE",
                                 )
                             ],
                         ),
-                        "schema": schema_dataset.SchemaDatasetFacet(
+                        "schema": SchemaDatasetFacet(
                             fields=[
-                                schema_dataset.SchemaDatasetFacetFields(
+                                SchemaDatasetFacetFields(
                                     name="column",
                                     type="string",
                                     description="from deserializer",
@@ -355,7 +368,7 @@ class TestAthenaOperator:
                 Dataset(namespace="s3://test_s3_bucket", name="/"),
             ],
             job_facets={
-                "sql": sql_job.SQLJobFacet(
+                "sql": SQLJobFacet(
                     query="INSERT INTO TEST_TABLE SELECT CUSTOMER_EMAIL FROM DISCOUNTS",
                 )
             },
