@@ -63,7 +63,7 @@ class OSSTaskHandler(FileTaskHandler, LoggingMixin):
                 remote_conn_id,
             )
 
-    def set_context(self, ti):
+    def set_context(self, ti, **kwargs):
         """Set the context of the handler."""
         super().set_context(ti)
         # Local location and remote location is needed to open and
