@@ -72,9 +72,20 @@ def get_custom_facets(task_instance: TaskInstance | None = None) -> dict[str, An
     # Append custom run facets by executing the custom_facet_functions.
     for custom_facet_func in conf.custom_facet_functions():
         func: type[function] | None = try_import_from_string(custom_facet_func)
+        if not func:
+            log.warning("Unable to import `%s`, will ignore it.", custom_facet_func)
         facet = func(task_instance) if func else None
         if facet and isinstance(facet, dict):
-            custom_facets.update(facet)
+            duplicate_facet_keys = [facet_key for facet_key in facet.keys() if facet_key in custom_facets]
+            if duplicate_facet_keys:
+                log.warning(
+                    "Got duplicate facets key(s), `%s` from `%s`, will ignore it.",
+                    ", ".join(duplicate_facet_keys),
+                    custom_facet_func,
+                )
+            else:
+                log.info(f"Appending custom facets from {custom_facet_func}.")
+                custom_facets.update(facet)
     return custom_facets
 
 
@@ -194,9 +205,9 @@ class TaskInstanceInfo(InfoJsonEncodable):
 
     includes = ["duration", "try_number", "pool"]
     casts = {
-        "map_index": lambda ti: ti.map_index
-        if hasattr(ti, "map_index") and getattr(ti, "map_index") != -1
-        else None
+        "map_index": lambda ti: (
+            ti.map_index if hasattr(ti, "map_index") and getattr(ti, "map_index") != -1 else None
+        )
     }
 
 
@@ -235,9 +246,11 @@ class TaskInfo(InfoJsonEncodable):
     ]
     casts = {
         "operator_class": lambda task: task.task_type,
-        "task_group": lambda task: TaskGroupInfo(task.task_group)
-        if hasattr(task, "task_group") and getattr(task.task_group, "_group_id", None)
-        else None,
+        "task_group": lambda task: (
+            TaskGroupInfo(task.task_group)
+            if hasattr(task, "task_group") and getattr(task.task_group, "_group_id", None)
+            else None
+        ),
     }
 
 
