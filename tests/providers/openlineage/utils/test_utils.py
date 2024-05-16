@@ -24,6 +24,7 @@ from airflow import DAG
 from airflow.decorators import task_group
 from airflow.models.taskinstance import TaskInstance as TI
 from airflow.operators.empty import EmptyOperator
+from airflow.providers.openlineage import __version__ as OPENLINEAGE_PROVIDER_VERSION
 from airflow.providers.openlineage.conf import custom_facet_functions
 from airflow.providers.openlineage.plugins.facets import AirflowMappedTaskRunFacet
 from airflow.providers.openlineage.utils.utils import get_custom_facets
@@ -86,7 +87,7 @@ def test_get_custom_facets_with_function_definition():
     result = get_custom_facets(SAMPLE_TI)
     assert result == {
         "additional_run_facet": {
-            "_producer": "https://github.com/apache/airflow/tree/providers-openlineage/1.7.0",
+            "_producer": f"https://github.com/apache/airflow/tree/providers-openlineage/{OPENLINEAGE_PROVIDER_VERSION}",
             "_schemaURL": "https://raw.githubusercontent.com/OpenLineage/OpenLineage/main/spec/OpenLineage.json#/definitions/BaseFacet",
             "name": "test-lineage-namespace",
             "jobState": "running",
@@ -113,7 +114,7 @@ def test_get_custom_facets_with_multiple_function_definition():
     result = get_custom_facets(SAMPLE_TI)
     assert result == {
         "additional_run_facet": {
-            "_producer": "https://github.com/apache/airflow/tree/providers-openlineage/1.7.0",
+            "_producer": f"https://github.com/apache/airflow/tree/providers-openlineage/{OPENLINEAGE_PROVIDER_VERSION}",
             "_schemaURL": "https://raw.githubusercontent.com/OpenLineage/OpenLineage/main/spec/OpenLineage.json#/definitions/BaseFacet",
             "name": "test-lineage-namespace",
             "jobState": "running",
