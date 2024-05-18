@@ -278,7 +278,7 @@ class OracleHook(DbApiHook):
             warnings.warn(
                 "Using 'replace=True' does not implement any replace functionality currently.",
                 category=UserWarning,
-                stacklevel=2
+                stacklevel=2,
             )
         try:
             import numpy as np
