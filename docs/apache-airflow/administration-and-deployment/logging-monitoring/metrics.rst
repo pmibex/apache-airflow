@@ -281,8 +281,8 @@ Name                                                             Description
                                                                  only a single scheduler can enter this loop at a time
 ``scheduler.critical_section_query_duration``                    Milliseconds spent running the critical section task instance query
 ``scheduler.scheduler_loop_duration``                            Milliseconds spent running one scheduler loop
-``dagrun.<dag_id>.first_task_scheduling_delay``                  Seconds elapsed between first task start_date and dagrun expected start
-``dagrun.first_task_scheduling_delay``                           Seconds elapsed between first task start_date and dagrun expected start.
+``dagrun.<dag_id>.first_task_scheduling_delay``                  Millisecondsg elapsed between first task start_date and dagrun expected start
+``dagrun.first_task_scheduling_delay``                           Milliseconds elapsed between first task start_date and dagrun expected start.
                                                                  Metric with dag_id and run_type tagging.
 ``collect_db_dags``                                              Milliseconds taken for fetching all Serialized Dags from DB
 ``kubernetes_executor.clear_not_launched_queued_tasks.duration`` Milliseconds taken for clearing not launched queued tasks in Kubernetes Executor
