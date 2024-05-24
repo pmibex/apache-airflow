@@ -278,6 +278,16 @@ class TracebackSession:
         pass
 
 
+def _json_serializer(o):
+    """JSON serializer for the SQLAlchemy engine.
+
+    This serializes XComArgs properly.
+    """
+    from airflow.utils.json import XComEncoder
+
+    return json.dumps(o, cls=XComEncoder)
+
+
 def configure_orm(disable_connection_pool=False, pool_class=None):
     """Configure ORM using SQLAlchemy."""
     from airflow.utils.log.secrets_masker import mask_secret
@@ -299,7 +309,6 @@ def configure_orm(disable_connection_pool=False, pool_class=None):
     global Session
     global engine
     from airflow.api_internal.internal_api_call import InternalApiConfig
-    from airflow.utils.json import XComEncoder
 
     if InternalApiConfig.get_use_internal_api():
         Session = TracebackSession
@@ -323,7 +332,7 @@ def configure_orm(disable_connection_pool=False, pool_class=None):
         connect_args=connect_args,
         **engine_args,
         future=True,
-        json_serializer=lambda o: json.dumps(o, cls=XComEncoder),
+        json_serializer=_json_serializer,
     )
 
     mask_secret(engine.url.password)
