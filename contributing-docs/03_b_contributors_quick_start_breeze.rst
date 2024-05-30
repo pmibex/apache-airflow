@@ -52,7 +52,7 @@ TODO: what happens if you run breeze start-airflow the first time you ever run b
 
 For the quickest of quick starts, simply run ``breeze start-airflow``. This will spin up the Airflow database
 (sqlite), the Airflow scheduler with the LocalExecutor, the Airflow triggerer, and the Airflow webserver --
-everything you need for many simple Airflow development tasks. 
+everything you need for many simple Airflow development tasks.
 
 This, however, is a very bare-bones Airflow environment. Many changes will require a database
 (``breeze start-airflow --backend postgres``), a specific executor (``breeze start-airflow --executor CeleryExecutor``),
@@ -68,7 +68,7 @@ the triggerer, the bottom-left runs and logs the scheduler, and the bottom-right
 Navigating tmux can be a little tricky at first. Your search engine is your best friend for finding out how to do things
 in tmux. One tip, though, is to hit ctrl+b then [ to enter "copy mode". This will enable you to scroll up and down in
 a particular window. Hit q to exit copy mode. Click or tap on one of the four tmux windows to interact with that window.
-   
+
 To exit tmux and stop Airflow, run ``stop_airflow`` in the top-left window.
 
 Following are some of important topics of `Breeze documentation <../dev/breeze/doc/README.rst>`__:
@@ -82,14 +82,24 @@ Following are some of important topics of `Breeze documentation <../dev/breeze/d
 Running tests with Breeze
 -------------------------
 
-You can usually conveniently run tests in your IDE (see IDE below) using virtualenv but with Breeze you
-can be sure that all the tests are run in the same environment as tests in CI.
+Many changes to the Airflow code base will require, at a minimum, a new unit test. All tests exist within the ``tests/``
+directory in the root of the Airflow project.
 
-All Tests are inside ./tests directory.
+One advantage with Breeze is that all of the tests are run in the same environment as Airflow's continuous integration (CI)
+pipeline.
 
-- Running Unit tests inside Breeze environment.
+Unit tests
+^^^^^^^^^^
 
-  Just run ``pytest filepath+filename`` to run the tests.
+You can run unit tests either from inside the Breeze environment using ``pytest path/to/test.py``
+or by using the ``breeze`` command from your terminal.
+
+Unit tests from inside Breeze
+"""""""""""""""""""""""""""""
+
+After creating a Breeze environment with ``breeze start-airflow``, you can run unit tests directly from the Breeze
+container using `pytest <https://docs.pytest.org/en/8.2.x/>`_ The below example will run all of the tests in the file
+``tests/utils/test_dates.py``:
 
 .. code-block:: bash
 
@@ -118,48 +128,22 @@ All Tests are inside ./tests directory.
 
    ============================================================== 12 passed in 0.24s ==============================================================
 
-- Running All the test with Breeze by specifying required python version, backend, backend version
+You can also run specific tests one by one. For example, ``pytest tests/utils/test_dates.py::TestDates::test_days_ago``
+would only run the test ``test_days_ago``. This can be really useful for quickly testing new tests.
+
+Unit tests with the ``breeze`` command
+""""""""""""""""""""""""""""""""""""""
+
+You don't need to be inside a Breeze environment in order to use Breeze to run unit tests. For example,
+``breeze testing tests tests/utils/test_dates.py`` will run all of the tests within the file ``tests/utils/test_dates.py``.
+
+Other tests
+^^^^^^^^^^^
+
+Some tests require a database or specific executor to be configured. These tests are beyond the scope of the quick start.
+More information can be found in the `contributor's guide for testing <09_testing.rst>`_. Here's a sneak peak, though,
+which will run all tests against a Postgres database:
 
 .. code-block:: bash
 
    breeze --backend postgres --postgres-version 15 --python 3.8 --db-reset testing tests --test-type All
-
-- Running specific type of test
-
-  - Types of tests
-
-  - Running specific type of test
-
-  .. code-block:: bash
-
-    breeze --backend postgres --postgres-version 15 --python 3.8 --db-reset testing tests --test-type Core
-
-
-- Running Integration test for specific test type
-
-  - Running an Integration Test
-
-  .. code-block:: bash
-
-   breeze --backend postgres --postgres-version 15 --python 3.8 --db-reset testing tests --test-type All --integration mongo
-
-- For more information on Testing visit : |09_testing.rst|
-
-  .. |09_testing.rst| raw:: html
-
-   <a href="https://github.com/apache/airflow/blob/main/contributing-docs/09_testing.rst" target="_blank">09_testing.rst</a>
-
-  - |Local and Remote Debugging in IDE|
-
-  .. |Local and Remote Debugging in IDE| raw:: html
-
-   <a href="https://github.com/apache/airflow/blob/main/contributing-docs/07_local_virtualenv.rst#local-and-remote-debugging-in-ide"
-   target="_blank">Local and Remote Debugging in IDE</a>
-
-
-
-
-
-
-
-
