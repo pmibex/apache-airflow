@@ -16,6 +16,8 @@
 # under the License.
 from __future__ import annotations
 
+import json
+
 import pytest
 
 from airflow.exceptions import AirflowException
@@ -46,3 +48,31 @@ class TestOpenSearchHook:
         hook = OpenSearchHook(open_search_conn_id="opensearch_default", log_query=True)
         with pytest.raises(AirflowException, match="must include one of either a query or a document id"):
             hook.delete(index_name="test_index")
+
+    def test_hook_with_auth(self, monkeypatch):
+        monkeypatch.setenv(
+            "AIRFLOW_CONN_OPENSEARCH_DEFAULT",
+            json.dumps(
+                {
+                    "conn_type": "opensearch hook",
+                    "host": "testhost",
+                    "login": "testuser",
+                    "password": "testpass",
+                }
+            ),
+        )
+        hook = OpenSearchHook(open_search_conn_id="opensearch_default", log_query=True)
+        assert hook.client.transport.kwargs["http_auth"] == ("testuser", "testpass")
+
+    def test_hook_no_auth(self, monkeypatch):
+        monkeypatch.setenv(
+            "AIRFLOW_CONN_OPENSEARCH_DEFAULT",
+            json.dumps(
+                {
+                    "conn_type": "opensearch hook",
+                    "host": "testhost",
+                }
+            ),
+        )
+        hook = OpenSearchHook(open_search_conn_id="opensearch_default", log_query=True)
+        assert "http_auth" not in hook.client.transport.kwargs
