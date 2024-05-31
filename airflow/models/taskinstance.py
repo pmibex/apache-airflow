@@ -2315,7 +2315,11 @@ class TaskInstance(Base, LoggingMixin):
         if ti.state in State.finished or ti.state == TaskInstanceState.UP_FOR_RETRY:
             ti.end_date = ti.end_date or current_time
             ti.duration = (ti.end_date - ti.start_date).total_seconds()
+        from airflow.models.taskinstancehistory import TaskInstanceHistory
+
+        ti_history = TaskInstanceHistory(ti)
         session.merge(ti)
+        session.merge(ti_history)
         return True
 
     @provide_session
@@ -3211,7 +3215,7 @@ class TaskInstance(Base, LoggingMixin):
             from airflow.models.taskinstancehistory import TaskInstanceHistory
 
             ti_history = TaskInstanceHistory(ti, state=TaskInstanceState.FAILED)
-            session.add(ti_history)
+            session.merge(ti_history)
 
             ti.state = State.UP_FOR_RETRY
             email_for_state = operator.attrgetter("email_on_retry")
