@@ -16,6 +16,7 @@
 # under the License.
 from __future__ import annotations
 
+import logging
 from collections import defaultdict
 from contextlib import closing
 from enum import IntEnum
@@ -90,14 +91,21 @@ def get_table_schemas(
     if not in_query and not out_query:
         return [], []
 
+    logging.getLogger(__name__).warning("CREATE_HOOK")
+
     with closing(hook.get_conn()) as conn, closing(conn.cursor()) as cursor:
+        logging.getLogger(__name__).warning("GOT HOOK")
         if in_query:
+            logging.getLogger(__name__).warning("PRE_IN_EXECUTE")
             cursor.execute(in_query)
+            logging.getLogger(__name__).warning("POST_IN_EXECUTE")
             in_datasets = [x.to_dataset(namespace, database, schema) for x in parse_query_result(cursor)]
         else:
             in_datasets = []
         if out_query:
+            logging.getLogger(__name__).warning("PRE_OUT_EXECUTE")
             cursor.execute(out_query)
+            logging.getLogger(__name__).warning("POST_OUT_EXECUTE")
             out_datasets = [x.to_dataset(namespace, database, schema) for x in parse_query_result(cursor)]
         else:
             out_datasets = []

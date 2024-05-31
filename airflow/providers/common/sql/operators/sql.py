@@ -309,6 +309,8 @@ class SQLExecuteQueryOperator(BaseSQLOperator):
         except ImportError:
             return None
 
+        self.log.debug("Getting Hook for OL")
+
         hook = self.get_db_hook()
 
         try:
@@ -318,6 +320,8 @@ class SQLExecuteQueryOperator(BaseSQLOperator):
         except ImportError:
             # OpenLineage provider release < 1.8.0 - we always use connection
             use_external_connection = True
+
+        self.log.error("External connection? %s", use_external_connection)
 
         connection = hook.get_connection(getattr(hook, hook.conn_name_attr))
         try:
@@ -337,6 +341,8 @@ class SQLExecuteQueryOperator(BaseSQLOperator):
         except AttributeError:
             self.log.debug("%s failed to get database dialect", hook)
             return None
+
+        self.log.error("SQL result? %s", str(sql_parser))
 
         operator_lineage = sql_parser.generate_openlineage_metadata_from_sql(
             sql=self.sql,

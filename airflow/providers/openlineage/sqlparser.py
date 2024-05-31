@@ -39,6 +39,7 @@ from airflow.providers.openlineage.utils.sql import (
     get_table_schemas,
 )
 from airflow.typing_compat import TypedDict
+from airflow.utils.log.logging_mixin import LoggingMixin
 
 if TYPE_CHECKING:
     from sqlalchemy.engine import Engine
@@ -116,7 +117,7 @@ def from_table_meta(
     return Dataset(namespace=namespace, name=name if not is_uppercase else name.upper())
 
 
-class SQLParser:
+class SQLParser(LoggingMixin):
     """Interface for openlineage-sql.
 
     :param dialect: dialect specific to the database
@@ -124,11 +125,13 @@ class SQLParser:
     """
 
     def __init__(self, dialect: str | None = None, default_schema: str | None = None) -> None:
+        super().__init__()
         self.dialect = dialect
         self.default_schema = default_schema
 
     def parse(self, sql: list[str] | str) -> SqlMeta | None:
         """Parse a single or a list of SQL statements."""
+        self.log.error("PRE IN PARSER - %s %s %s", sql, self.dialect, self.default_schema)
         return parse(sql=sql, dialect=self.dialect, default_schema=self.default_schema)
 
     def parse_table_schemas(
@@ -151,6 +154,7 @@ class SQLParser:
             "database": database or database_info.database,
             "use_flat_cross_db_query": database_info.use_flat_cross_db_query,
         }
+        self.log.info("PRE getting schemas for input and output tables")
         return get_table_schemas(
             hook,
             namespace,
@@ -251,10 +255,15 @@ class SQLParser:
         :param sqlalchemy_engine: when passed, engine's dialect is used to compile SQL queries
         """
         job_facets: dict[str, BaseFacet] = {"sql": SqlJobFacet(query=self.normalize_sql(sql))}
-        parse_result = self.parse(self.split_sql_string(sql))
+        self.log.error("Pre split")
+        split = self.split_sql_string(sql)
+        self.log.error("POST SPLIT, PRE PARSE")
+        parse_result = self.parse(split)
         if not parse_result:
+            self.log.error("NOT_PARSED")
             return OperatorLineage(job_facets=job_facets)
 
+        self.log.error("Post call parser")
         run_facets: dict[str, BaseFacet] = {}
         if parse_result.errors:
             run_facets["extractionError"] = ExtractionErrorRunFacet(
@@ -271,8 +280,11 @@ class SQLParser:
                 ],
             )
 
+        self.log.error("Before connection usage")
+
         namespace = self.create_namespace(database_info=database_info)
         if use_connection:
+            self.log.error("Use connection")
             inputs, outputs = self.parse_table_schemas(
                 hook=hook,
                 inputs=parse_result.in_tables,
@@ -283,6 +295,7 @@ class SQLParser:
                 sqlalchemy_engine=sqlalchemy_engine,
             )
         else:
+            self.log.error("Use only Parser Metadata")
             inputs, outputs = self.get_metadata_from_parser(
                 inputs=parse_result.in_tables,
                 outputs=parse_result.out_tables,
@@ -335,9 +348,8 @@ class SQLParser:
             return split_statement(sql)
         return [obj for stmt in sql for obj in cls.split_sql_string(stmt) if obj != ""]
 
-    @classmethod
     def create_information_schema_query(
-        cls,
+        self,
         tables: list[DbTableMeta],
         normalize_name: Callable[[str], str],
         is_cross_db: bool,
@@ -349,12 +361,14 @@ class SQLParser:
         sqlalchemy_engine: Engine | None = None,
     ) -> str:
         """Create SELECT statement to query information schema table."""
-        tables_hierarchy = cls._get_tables_hierarchy(
+        self.log.info("Creating tables_hierarchy info for tables %s", tables)
+        tables_hierarchy = self._get_tables_hierarchy(
             tables,
             normalize_name=normalize_name,
             database=database,
             is_cross_db=is_cross_db,
         )
+        self.log.info("Got tables_hierarchy: %s, going to create queries", tables_hierarchy)
         return create_information_schema_query(
             columns=information_schema_columns,
             information_schema_table_name=information_schema_table,

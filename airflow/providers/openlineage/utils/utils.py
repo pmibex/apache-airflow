@@ -406,4 +406,5 @@ def normalize_sql(sql: str | Iterable[str]):
 
 def should_use_external_connection(hook) -> bool:
     # TODO: Add checking overrides
-    return hook.__class__.__name__ not in ["SnowflakeHook", "SnowflakeSqlApiHook"]
+    return False
+    # return hook.__class__.__name__ not in ["SnowflakeHook", "SnowflakeSqlApiHook"]
