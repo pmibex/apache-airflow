@@ -36,11 +36,12 @@ Installation
 1. Install `Docker Desktop <https://docs.docker.com/get-docker/>`_
 2. Install `Docker Compose <https://docs.docker.com/compose/install/>`_
 3. Install pipx: ``pip install --user "pipx>=1.4.1"``
+   1. MacOS users may want to consider using brew to install pipx: ``brew install pipx``
 4. Add pipx to your PATH:
-  1. MacOS: ``python -m pipx ensurepath``
-  2. Otherwise: ``pipx ensurepath``
+  1. If you installed pipx with pip on MacOS, run ``python -m pipx ensurepath``
+  2. Otherwise, run ``pipx ensurepath``
 5. Install Breeze: ``pipx install -e ./dev/breeze``
-  1. Optionally configure autocomplete: ``breeze setup autocomplete``
+  3. Optionally configure autocomplete: ``breeze setup autocomplete``
 
 For more detailed Breeze installation instructions, see the `Breeze installation guide <../dev/breeze/doc/01_installation.rst`_.
 For troubleshooting Breeze installation, see the `Breeze troubleshooting guide <../dev/breeze/doc/04_troubleshooting.rst`_.
