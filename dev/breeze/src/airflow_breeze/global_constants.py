@@ -61,6 +61,7 @@ TESTABLE_INTEGRATIONS = [
     "pinot",
     "trino",
     "qdrant",
+    "ydb"
 ]
 OTHER_INTEGRATIONS = ["statsd", "otel", "openlineage"]
 ALLOWED_DEBIAN_VERSIONS = ["bookworm", "bullseye"]

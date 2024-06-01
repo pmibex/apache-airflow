@@ -1,5 +1,1 @@
-<<<<<<< HEAD
-df6894b42ff874ea9b414d61d4a7c8a0
-=======
-fc2d42a0fe4252f5234501da27f3fe2c
->>>>>>> 06aa525a40 (rework connection setup, rework auto-docs)
+f6fdae6ce7bea8ae05cb69024e115413
