@@ -23,6 +23,7 @@ from airflow.models import DagBag, DagRun, TaskInstance
 from airflow.security import permissions
 from airflow.utils import timezone
 from airflow.utils.session import create_session
+from airflow.utils.types import DagRunTriggeredByType
 from airflow.www.views import DagRunModelView
 from tests.test_utils.api_connexion_utils import create_user, delete_roles, delete_user
 from tests.test_utils.www import check_content_in_response, check_content_not_in_response, client_with_login
@@ -133,6 +134,7 @@ def running_dag_run(session):
         data_interval=(execution_date, execution_date),
         run_id="test_dag_runs_action",
         session=session,
+        triggered_by=DagRunTriggeredByType.TEST,
     )
     session.add(dr)
     tis = [
@@ -154,6 +156,7 @@ def completed_dag_run_with_missing_task(session):
         data_interval=(execution_date, execution_date),
         run_id="test_dag_runs_action",
         session=session,
+        triggered_by=DagRunTriggeredByType.TEST,
     )
     session.add(dr)
     tis = [

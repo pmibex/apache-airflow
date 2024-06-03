@@ -27,7 +27,7 @@ from airflow.ti_deps.dep_context import DepContext
 from airflow.ti_deps.deps.prev_dagrun_dep import PrevDagrunDep
 from airflow.utils.state import DagRunState, TaskInstanceState
 from airflow.utils.timezone import convert_to_utc, datetime
-from airflow.utils.types import DagRunType
+from airflow.utils.types import DagRunTriggeredByType, DagRunType
 from tests.test_utils.db import clear_db_runs
 
 pytestmark = pytest.mark.db_test
@@ -56,6 +56,7 @@ class TestPrevDagrunDep:
             state=TaskInstanceState.SUCCESS,
             execution_date=old_task.start_date,
             run_type=DagRunType.SCHEDULED,
+            triggered_by=DagRunTriggeredByType.TEST,
         )
 
         new_task = BaseOperator(
@@ -72,6 +73,7 @@ class TestPrevDagrunDep:
             state=DagRunState.RUNNING,
             execution_date=convert_to_utc(datetime(2016, 1, 2)),
             run_type=DagRunType.SCHEDULED,
+            triggered_by=DagRunTriggeredByType.TEST,
         )
 
         ti = dr.get_task_instance(new_task.task_id)

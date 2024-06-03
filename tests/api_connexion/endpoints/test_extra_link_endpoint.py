@@ -31,7 +31,7 @@ from airflow.security import permissions
 from airflow.timetables.base import DataInterval
 from airflow.utils import timezone
 from airflow.utils.state import DagRunState
-from airflow.utils.types import DagRunType
+from airflow.utils.types import DagRunTriggeredByType, DagRunType
 from tests.test_utils.api_connexion_utils import create_user, delete_user
 from tests.test_utils.compat import BaseOperatorLink
 from tests.test_utils.db import clear_db_runs, clear_db_xcom
@@ -85,6 +85,7 @@ class TestGetExtraLinks:
             state=DagRunState.SUCCESS,
             session=session,
             data_interval=DataInterval(timezone.datetime(2020, 1, 1), timezone.datetime(2020, 1, 2)),
+            triggered_by=DagRunTriggeredByType.TEST,
         )
         session.flush()
 

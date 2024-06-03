@@ -47,7 +47,7 @@ from airflow.operators.bash import BashOperator
 from airflow.utils import timezone
 from airflow.utils.session import create_session
 from airflow.utils.state import State, TaskInstanceState
-from airflow.utils.types import DagRunType
+from airflow.utils.types import DagRunTriggeredByType, DagRunType
 from tests.test_utils.config import conf_vars
 from tests.test_utils.db import clear_db_pools, clear_db_runs
 
@@ -100,6 +100,7 @@ class TestCliTasks:
             run_type=DagRunType.MANUAL,
             execution_date=DEFAULT_DATE,
             data_interval=data_interval,
+            triggered_by=DagRunTriggeredByType.CLI,
         )
 
     @classmethod
@@ -201,6 +202,7 @@ class TestCliTasks:
             execution_date=execution_date,
             data_interval=data_interval,
             session=session,
+            triggered_by=DagRunTriggeredByType.TEST,
         )
         session.commit()
 
@@ -585,6 +587,7 @@ class TestCliTasks:
             data_interval=data_interval,
             run_type=DagRunType.MANUAL,
             external_trigger=True,
+            triggered_by=DagRunTriggeredByType.CLI,
         )
         ti2 = TaskInstance(task2, run_id=dagrun.run_id)
         ti2.set_state(State.SUCCESS)
@@ -681,6 +684,7 @@ class TestLogsfromTaskRunCommand:
             start_date=timezone.utcnow(),
             state=State.RUNNING,
             run_type=DagRunType.MANUAL,
+            triggered_by=DagRunTriggeredByType.TEST,
         )
         self.tis = self.dr.get_task_instances()
         assert len(self.tis) == 1
@@ -986,6 +990,7 @@ def test_context_with_run():
         start_date=timezone.utcnow(),
         state=State.RUNNING,
         run_type=DagRunType.MANUAL,
+        triggered_by=DagRunTriggeredByType.TEST,
     )
     with conf_vars({("core", "dags_folder"): dag_path}):
         task_command.task_run(parser.parse_args(task_args))

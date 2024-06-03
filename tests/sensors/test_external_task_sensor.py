@@ -51,7 +51,7 @@ from airflow.utils.session import create_session, provide_session
 from airflow.utils.state import DagRunState, State, TaskInstanceState
 from airflow.utils.task_group import TaskGroup
 from airflow.utils.timezone import datetime
-from airflow.utils.types import DagRunType
+from airflow.utils.types import DagRunTriggeredByType, DagRunType
 from tests.models import TEST_DAGS_FOLDER
 from tests.test_utils.db import clear_db_runs
 from tests.test_utils.mock_operators import MockOperator
@@ -441,6 +441,7 @@ class TestExternalTaskSensor:
             execution_date=DEFAULT_DATE,
             state=State.SUCCESS,
             data_interval=(DEFAULT_DATE, DEFAULT_DATE),
+            triggered_by=DagRunTriggeredByType.TEST,
         )
         op = ExternalTaskSensor(
             task_id="test_external_dag_sensor_check",
@@ -458,6 +459,7 @@ class TestExternalTaskSensor:
             execution_date=DEFAULT_DATE,
             state=State.SUCCESS,
             data_interval=(DEFAULT_DATE, DEFAULT_DATE),
+            triggered_by=DagRunTriggeredByType.TEST,
         )
         op = ExternalTaskSensor(
             task_id="test_external_dag_sensor_check",
@@ -475,6 +477,7 @@ class TestExternalTaskSensor:
             execution_date=DEFAULT_DATE,
             state=State.SUCCESS,
             data_interval=(DEFAULT_DATE, DEFAULT_DATE),
+            triggered_by=DagRunTriggeredByType.TEST,
         )
         op = ExternalTaskSensor(
             task_id="test_external_dag_sensor_check",
@@ -1242,10 +1245,10 @@ def run_tasks(dag_bag, execution_date=DEFAULT_DATE, session=None):
     for dag in dag_bag.dags.values():
         dagrun = dag.create_dagrun(
             state=State.RUNNING,
+            triggered_by=DagRunTriggeredByType.TEST,
             execution_date=execution_date,
             start_date=execution_date,
             run_type=DagRunType.MANUAL,
-            data_interval=(execution_date, execution_date),
             session=session,
         )
         # we use sorting by task_id here because for the test DAG structure of ours
@@ -1629,7 +1632,7 @@ def dag_bag_head_tail_mapped_tasks():
     with DAG("head_tail", start_date=DEFAULT_DATE, schedule="@daily") as dag:
 
         @task_deco
-        def fake_task(x: int):
+        def dummy_task(x: int):
             return x
 
         head = ExternalTaskSensor(
@@ -1640,7 +1643,7 @@ def dag_bag_head_tail_mapped_tasks():
             mode="reschedule",
         )
 
-        body = fake_task.expand(x=range(5))
+        body = dummy_task.expand(x=range(5))
         tail = ExternalTaskMarker(
             task_id="tail",
             external_dag_id=dag.dag_id,
@@ -1670,7 +1673,7 @@ def test_clear_overlapping_external_task_marker_mapped_tasks(dag_bag_head_tail_m
         )
         session.add(dagrun)
         for task in dag.tasks:
-            if task.task_id == "fake_task":
+            if task.task_id == "dummy_task":
                 for map_index in range(5):
                     ti = TaskInstance(task=task, run_id=dagrun.run_id, map_index=map_index)
                     ti.state = TaskInstanceState.SUCCESS

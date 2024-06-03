@@ -40,6 +40,7 @@ from airflow.utils.log.file_task_handler import FileTaskHandler
 from airflow.utils.platform import getuser
 from airflow.utils.state import State
 from airflow.utils.timeout import timeout
+from airflow.utils.types import DagRunTriggeredByType
 from tests.listeners import xcom_listener
 from tests.listeners.file_write_listener import FileWriteListener
 from tests.test_utils.db import clear_db_runs
@@ -153,6 +154,7 @@ class TestStandardTaskRunner:
             data_interval=(DEFAULT_DATE, DEFAULT_DATE),
             state=State.RUNNING,
             start_date=DEFAULT_DATE,
+            triggered_by=DagRunTriggeredByType.TEST,
         )
         ti = TaskInstance(task=task, run_id="test")
         job = Job(dag_id=ti.dag_id)
@@ -194,6 +196,7 @@ class TestStandardTaskRunner:
             data_interval=(DEFAULT_DATE, DEFAULT_DATE),
             state=State.RUNNING,
             start_date=DEFAULT_DATE,
+            triggered_by=DagRunTriggeredByType.TEST,
         )
         ti = TaskInstance(task=task, run_id="test")
         job = Job(dag_id=ti.dag_id)
@@ -239,6 +242,7 @@ class TestStandardTaskRunner:
             data_interval=(DEFAULT_DATE, DEFAULT_DATE),
             state=State.RUNNING,
             start_date=DEFAULT_DATE,
+            triggered_by=DagRunTriggeredByType.TEST,
         )
 
         ti = TaskInstance(task=task, run_id="test")
@@ -367,6 +371,7 @@ class TestStandardTaskRunner:
             data_interval=(DEFAULT_DATE, DEFAULT_DATE),
             state=State.RUNNING,
             start_date=DEFAULT_DATE,
+            triggered_by=DagRunTriggeredByType.TEST,
         )
         ti = TaskInstance(task=task, run_id="test")
         job = Job(dag_id=ti.dag_id)
@@ -420,6 +425,7 @@ class TestStandardTaskRunner:
             data_interval=(DEFAULT_DATE, DEFAULT_DATE),
             state=State.RUNNING,
             start_date=DEFAULT_DATE,
+            triggered_by=DagRunTriggeredByType.TEST,
         )
         ti = TaskInstance(task=task, run_id="test")
         job = Job(dag_id=ti.dag_id)

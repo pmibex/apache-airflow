@@ -88,7 +88,7 @@ from airflow.utils.state import DagRunState, State, TaskInstanceState
 from airflow.utils.task_group import TaskGroup, TaskGroupContext
 from airflow.utils.timezone import datetime as datetime_tz
 from airflow.utils.trigger_rule import TriggerRule
-from airflow.utils.types import DagRunType
+from airflow.utils.types import DagRunTriggeredByType, DagRunType
 from airflow.utils.weight_rule import WeightRule
 from tests.models import DEFAULT_DATE
 from tests.plugins.priority_weight_strategy import (
@@ -459,7 +459,12 @@ class TestDag:
                 task_id="empty_task",
                 weight_rule=cls(),
             )
-        dr = dag.create_dagrun(state=None, run_id="test", execution_date=DEFAULT_DATE)
+        dr = dag.create_dagrun(
+            state=None,
+            run_id="test",
+            execution_date=DEFAULT_DATE,
+            triggered_by=DagRunTriggeredByType.TEST,
+        )
         ti = dr.get_task_instance(task.task_id)
         assert ti.priority_weight == expected
 
@@ -480,15 +485,29 @@ class TestDag:
         test_dag = DAG(dag_id=test_dag_id, start_date=DEFAULT_DATE)
         test_task = EmptyOperator(task_id=test_task_id, dag=test_dag)
 
-        dr1 = test_dag.create_dagrun(state=None, run_id="test1", execution_date=DEFAULT_DATE)
+        dr1 = test_dag.create_dagrun(
+            state=None,
+            run_id="test1",
+            execution_date=DEFAULT_DATE,
+            triggered_by=DagRunTriggeredByType.TEST,
+        )
         dr2 = test_dag.create_dagrun(
-            state=None, run_id="test2", execution_date=DEFAULT_DATE + datetime.timedelta(days=1)
+            state=None,
+            run_id="test2",
+            execution_date=DEFAULT_DATE + datetime.timedelta(days=1),
+            triggered_by=DagRunTriggeredByType.TEST,
         )
         dr3 = test_dag.create_dagrun(
-            state=None, run_id="test3", execution_date=DEFAULT_DATE + datetime.timedelta(days=2)
+            state=None,
+            run_id="test3",
+            execution_date=DEFAULT_DATE + datetime.timedelta(days=2),
+            triggered_by=DagRunTriggeredByType.TEST,
         )
         dr4 = test_dag.create_dagrun(
-            state=None, run_id="test4", execution_date=DEFAULT_DATE + datetime.timedelta(days=3)
+            state=None,
+            run_id="test4",
+            execution_date=DEFAULT_DATE + datetime.timedelta(days=3),
+            triggered_by=DagRunTriggeredByType.TEST,
         )
 
         ti1 = TI(task=test_task, run_id=dr1.run_id)
@@ -538,7 +557,11 @@ class TestDag:
 
         def dag_run_before(delta_h=0, type=DagRunType.SCHEDULED):
             dagrun = test_dag.create_dagrun(
-                state=State.SUCCESS, run_type=type, run_id=f"test_{delta_h}", session=session
+                state=State.SUCCESS,
+                run_type=type,
+                run_id=f"test_{delta_h}",
+                session=session,
+                triggered_by=DagRunTriggeredByType.TEST,
             )
             dagrun.start_date = BASE_DATE + timedelta(hours=delta_h)
             dagrun.execution_date = BASE_DATE + timedelta(hours=delta_h)
@@ -875,7 +898,10 @@ class TestDag:
         dag = DAG("dag_with_none_schedule_and_empty_start_date")
         dag.add_task(BaseOperator(task_id="task_without_start_date"))
         dagrun = dag.create_dagrun(
-            state=State.RUNNING, run_type=DagRunType.MANUAL, execution_date=DEFAULT_DATE
+            state=State.RUNNING,
+            run_type=DagRunType.MANUAL,
+            execution_date=DEFAULT_DATE,
+            triggered_by=DagRunTriggeredByType.TEST,
         )
         assert dagrun is not None
 
@@ -1086,6 +1112,7 @@ class TestDag:
             execution_date=model.next_dagrun,
             run_type=DagRunType.SCHEDULED,
             session=session,
+            triggered_by=DagRunTriggeredByType.TEST,
         )
         assert dr is not None
         DAG.bulk_write_to_db([dag])
@@ -1414,6 +1441,7 @@ class TestDag:
                 run_id="run_id_" + id,
                 execution_date=execution_date,
                 state=State.FAILED,
+                triggered_by=DagRunTriggeredByType.TEST,
             )
             ti_op1 = dr.get_task_instance(task_id=op1.task_id, session=session)
             ti_op1.set_state(state=TaskInstanceState.FAILED, session=session)
@@ -1617,6 +1645,7 @@ class TestDag:
             run_type=DagRunType.SCHEDULED,
             execution_date=TEST_DATE,
             state=State.RUNNING,
+            triggered_by=DagRunTriggeredByType.TEST,
         )
         assert dag_run is not None
         assert dag.dag_id == dag_run.dag_id
@@ -1648,7 +1677,13 @@ class TestDag:
         dag.add_task(BaseOperator(task_id="faketastic", owner="Also fake", start_date=when))
 
         with create_session() as session:
-            dag_run = dag.create_dagrun(State.RUNNING, when, run_type=DagRunType.MANUAL, session=session)
+            dag_run = dag.create_dagrun(
+                State.RUNNING,
+                triggered_by=DagRunTriggeredByType.TEST,
+                execution_date=when,
+                run_type=DagRunType.MANUAL,
+                session=session,
+            )
 
             # should not raise any exception
             dag.handle_callback(dag_run, success=False)
@@ -1677,7 +1712,13 @@ class TestDag:
             task_removed = EmptyOperator(task_id="removed_task")
 
         with create_session() as session:
-            dag_run = dag.create_dagrun(State.RUNNING, TEST_DATE, run_type=DagRunType.MANUAL, session=session)
+            dag_run = dag.create_dagrun(
+                State.RUNNING,
+                triggered_by=DagRunTriggeredByType.TEST,
+                execution_date=TEST_DATE,
+                run_type=DagRunType.MANUAL,
+                session=session,
+            )
             dag._remove_task(task_removed.task_id)
             tis = dag_run.get_task_instances(session=session)
             tis[-1].state = TaskInstanceState.REMOVED
@@ -1705,6 +1746,7 @@ class TestDag:
             execution_date=DEFAULT_DATE,
             state=State.SUCCESS,
             external_trigger=True,
+            triggered_by=DagRunTriggeredByType.TEST,
         )
         dag.sync_to_db()
         with create_session() as session:
@@ -1730,7 +1772,12 @@ class TestDag:
         # Sync once to create the DagModel
         dag.sync_to_db()
 
-        dag.create_dagrun(run_type=DagRunType.SCHEDULED, execution_date=TEST_DATE, state=State.SUCCESS)
+        dag.create_dagrun(
+            run_type=DagRunType.SCHEDULED,
+            execution_date=TEST_DATE,
+            state=State.SUCCESS,
+            triggered_by=DagRunTriggeredByType.TEST,
+        )
 
         # Then sync again after creating the dag run -- this should update next_dagrun
         dag.sync_to_db()
@@ -1757,6 +1804,7 @@ class TestDag:
             start_date=start_date,
             state=State.RUNNING,
             external_trigger=False,
+            triggered_by=DagRunTriggeredByType.TEST,
         )
 
         run.refresh_from_db()
@@ -1901,22 +1949,38 @@ class TestDag:
 
     def test_create_dagrun_run_id_is_generated(self):
         dag = DAG(dag_id="run_id_is_generated")
-        dr = dag.create_dagrun(run_type=DagRunType.MANUAL, execution_date=DEFAULT_DATE, state=State.NONE)
+        dr = dag.create_dagrun(
+            run_type=DagRunType.MANUAL,
+            execution_date=DEFAULT_DATE,
+            state=State.NONE,
+            triggered_by=DagRunTriggeredByType.TEST,
+        )
         assert dr.run_id == f"manual__{DEFAULT_DATE.isoformat()}"
 
     def test_create_dagrun_run_type_is_obtained_from_run_id(self):
         dag = DAG(dag_id="run_type_is_obtained_from_run_id")
-        dr = dag.create_dagrun(run_id="scheduled__", state=State.NONE)
+        dr = dag.create_dagrun(
+            run_id="scheduled__",
+            state=State.NONE,
+            triggered_by=DagRunTriggeredByType.TEST,
+        )
         assert dr.run_type == DagRunType.SCHEDULED
 
-        dr = dag.create_dagrun(run_id="custom_is_set_to_manual", state=State.NONE)
+        dr = dag.create_dagrun(
+            run_id="custom_is_set_to_manual",
+            state=State.NONE,
+            triggered_by=DagRunTriggeredByType.TEST,
+        )
         assert dr.run_type == DagRunType.MANUAL
 
     def test_create_dagrun_job_id_is_set(self):
         job_id = 42
         dag = DAG(dag_id="test_create_dagrun_job_id_is_set")
         dr = dag.create_dagrun(
-            run_id="test_create_dagrun_job_id_is_set", state=State.NONE, creating_job_id=job_id
+            run_id="test_create_dagrun_job_id_is_set",
+            state=State.NONE,
+            creating_job_id=job_id,
+            triggered_by=DagRunTriggeredByType.TEST,
         )
         assert dr.creating_job_id == job_id
 
@@ -1975,6 +2039,7 @@ class TestDag:
             state=State.FAILED,
             start_date=DEFAULT_DATE,
             execution_date=DEFAULT_DATE,
+            triggered_by=DagRunTriggeredByType.TEST,
         )
         session.merge(dagrun_1)
 
@@ -2031,6 +2096,7 @@ class TestDag:
             start_date=DEFAULT_DATE,
             execution_date=DEFAULT_DATE,
             session=session,
+            triggered_by=DagRunTriggeredByType.TEST,
         )
         expand_mapped_task(mapped, dagrun_1.run_id, "make_arg_lists", length=2, session=session)
 
@@ -2211,6 +2277,7 @@ my_postgres_conn:
             start_date=DEFAULT_DATE,
             execution_date=DEFAULT_DATE,
             session=session,
+            triggered_by=DagRunTriggeredByType.TEST,
         )
         subdag.create_dagrun(
             run_type=DagRunType.MANUAL,
@@ -2218,6 +2285,7 @@ my_postgres_conn:
             start_date=DEFAULT_DATE,
             execution_date=DEFAULT_DATE,
             session=session,
+            triggered_by=DagRunTriggeredByType.TEST,
         )
         task_instance_1 = TI(t_1, execution_date=DEFAULT_DATE, state=State.RUNNING)
         task_instance_2 = TI(t_2, execution_date=DEFAULT_DATE, state=State.RUNNING)
@@ -2299,6 +2367,7 @@ my_postgres_conn:
             state=DagRunState.RUNNING,
             start_date=DEFAULT_DATE,
             execution_date=DEFAULT_DATE,
+            triggered_by=DagRunTriggeredByType.TEST,
         )
         session.merge(dagrun_1)
 
@@ -2630,6 +2699,7 @@ my_postgres_conn:
                 run_id="test_dagrun_missing_param",
                 state=State.RUNNING,
                 execution_date=TEST_DATE,
+                triggered_by=DagRunTriggeredByType.TEST,
             )
 
         dag = DAG("dummy-dag", schedule=None, params={"param1": Param(type="string")})
@@ -2641,6 +2711,7 @@ my_postgres_conn:
                 state=State.RUNNING,
                 execution_date=TEST_DATE,
                 conf={"param1": None},
+                triggered_by=DagRunTriggeredByType.TEST,
             )
 
         dag = DAG("dummy-dag", schedule=None, params={"param1": Param(type="string")})
@@ -2649,6 +2720,7 @@ my_postgres_conn:
             state=State.RUNNING,
             execution_date=TEST_DATE,
             conf={"param1": "hello"},
+            triggered_by=DagRunTriggeredByType.TEST,
         )
 
     def test_return_date_range_with_num_method(self):
@@ -3025,6 +3097,7 @@ class TestQueries:
                 run_id="test_dagrun_query_count",
                 state=State.RUNNING,
                 execution_date=TEST_DATE,
+                triggered_by=DagRunTriggeredByType.TEST,
             )
 
 
@@ -3166,6 +3239,7 @@ class TestDagDecorator:
             execution_date=self.DEFAULT_DATE,
             data_interval=(self.DEFAULT_DATE, self.DEFAULT_DATE),
             state=State.RUNNING,
+            triggered_by=DagRunTriggeredByType.TEST,
         )
 
         self.operator.run(start_date=self.DEFAULT_DATE, end_date=self.DEFAULT_DATE)
@@ -3195,6 +3269,7 @@ class TestDagDecorator:
             data_interval=(self.DEFAULT_DATE, self.DEFAULT_DATE),
             state=State.RUNNING,
             conf={"value": new_value},
+            triggered_by=DagRunTriggeredByType.TEST,
         )
 
         self.operator.run(start_date=self.DEFAULT_DATE, end_date=self.DEFAULT_DATE)
@@ -3739,6 +3814,7 @@ def test_dag_uses_timetable_for_run_id(session):
         state=DagRunState.QUEUED,
         execution_date=DEFAULT_DATE,
         data_interval=(DEFAULT_DATE, DEFAULT_DATE),
+        triggered_by=DagRunTriggeredByType.TEST,
     )
 
     assert dag_run.run_id == "abc"
@@ -3758,6 +3834,7 @@ def test_create_dagrun_disallow_manual_to_use_automated_run_id(run_id_type: DagR
             execution_date=DEFAULT_DATE,
             data_interval=(DEFAULT_DATE, DEFAULT_DATE),
             state=DagRunState.QUEUED,
+            triggered_by=DagRunTriggeredByType.TEST,
         )
     assert str(ctx.value) == (
         f"A manual DAG run cannot use ID {run_id!r} since it is reserved for {run_id_type.value} runs"

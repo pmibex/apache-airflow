@@ -27,7 +27,7 @@ from airflow.models.baseoperator import BaseOperator
 from airflow.models.dag import DAG
 from airflow.utils import timezone
 from airflow.utils.state import DagRunState
-from airflow.utils.types import DagRunType
+from airflow.utils.types import DagRunTriggeredByType, DagRunType
 from tests.test_utils.compat import BaseOperatorLink
 from tests.test_utils.db import clear_db_runs
 from tests.test_utils.mock_operators import AirflowLink, Dummy2TestOperator, Dummy3TestOperator
@@ -85,6 +85,7 @@ def create_dag_run(dag):
             data_interval=(execution_date, execution_date),
             run_type=DagRunType.MANUAL,
             session=session,
+            triggered_by=DagRunTriggeredByType.TEST,
         )
 
     return _create_dag_run

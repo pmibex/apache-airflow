@@ -42,7 +42,7 @@ from airflow.utils import timezone
 from airflow.utils.log.logging_mixin import ExternalLoggingMixin
 from airflow.utils.session import create_session
 from airflow.utils.state import DagRunState, State
-from airflow.utils.types import DagRunType
+from airflow.utils.types import DagRunTriggeredByType, DagRunType
 from airflow.www.views import TaskInstanceModelView
 from tests.test_utils.api_connexion_utils import create_user, delete_roles, delete_user
 from tests.test_utils.config import conf_vars
@@ -75,6 +75,7 @@ def init_dagruns(app, reset_dagruns):
             data_interval=(DEFAULT_DATE, DEFAULT_DATE),
             start_date=timezone.utcnow(),
             state=State.RUNNING,
+            triggered_by=DagRunTriggeredByType.TEST,
         )
         XCom.set(
             key="return_value",
@@ -90,6 +91,7 @@ def init_dagruns(app, reset_dagruns):
             data_interval=(DEFAULT_DATE, DEFAULT_DATE),
             start_date=timezone.utcnow(),
             state=State.RUNNING,
+            triggered_by=DagRunTriggeredByType.TEST,
         )
         app.dag_bag.get_dag("example_xcom").create_dagrun(
             run_id=DEFAULT_DAGRUN,
@@ -98,6 +100,7 @@ def init_dagruns(app, reset_dagruns):
             data_interval=(DEFAULT_DATE, DEFAULT_DATE),
             start_date=timezone.utcnow(),
             state=State.RUNNING,
+            triggered_by=DagRunTriggeredByType.TEST,
         )
         app.dag_bag.get_dag("latest_only").create_dagrun(
             run_id=DEFAULT_DAGRUN,
@@ -106,6 +109,7 @@ def init_dagruns(app, reset_dagruns):
             data_interval=(DEFAULT_DATE, DEFAULT_DATE),
             start_date=timezone.utcnow(),
             state=State.RUNNING,
+            triggered_by=DagRunTriggeredByType.TEST,
         )
         app.dag_bag.get_dag("example_task_group").create_dagrun(
             run_id=DEFAULT_DAGRUN,
@@ -114,6 +118,7 @@ def init_dagruns(app, reset_dagruns):
             data_interval=(DEFAULT_DATE, DEFAULT_DATE),
             start_date=timezone.utcnow(),
             state=State.RUNNING,
+            triggered_by=DagRunTriggeredByType.TEST,
         )
     yield
     clear_db_runs()
@@ -394,6 +399,7 @@ def test_tree_trigger_origin_tree_view(app, admin_client):
         data_interval=(DEFAULT_DATE, DEFAULT_DATE),
         start_date=timezone.utcnow(),
         state=State.RUNNING,
+        triggered_by=DagRunTriggeredByType.TEST,
     )
 
     url = "tree?dag_id=test_tree_view"
@@ -410,6 +416,7 @@ def test_graph_trigger_origin_grid_view(app, admin_client):
         data_interval=(DEFAULT_DATE, DEFAULT_DATE),
         start_date=timezone.utcnow(),
         state=State.RUNNING,
+        triggered_by=DagRunTriggeredByType.TEST,
     )
 
     url = "/dags/test_tree_view/graph"
@@ -426,6 +433,7 @@ def test_gantt_trigger_origin_grid_view(app, admin_client):
         data_interval=(DEFAULT_DATE, DEFAULT_DATE),
         start_date=timezone.utcnow(),
         state=State.RUNNING,
+        triggered_by=DagRunTriggeredByType.TEST,
     )
 
     url = "/dags/test_tree_view/gantt"
@@ -874,6 +882,7 @@ def test_task_instance_clear_downstream(session, admin_client, dag_maker):
         execution_date=dag_maker.dag.start_date,
         start_date=dag_maker.dag.start_date,
         session=session,
+        triggered_by=DagRunTriggeredByType.TEST,
     )
 
     run2 = dag_maker.create_dagrun(
@@ -883,6 +892,7 @@ def test_task_instance_clear_downstream(session, admin_client, dag_maker):
         execution_date=dag_maker.dag.start_date.add(days=1),
         start_date=dag_maker.dag.start_date.add(days=1),
         session=session,
+        triggered_by=DagRunTriggeredByType.TEST,
     )
 
     for run in (run1, run2):

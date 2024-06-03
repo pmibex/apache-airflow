@@ -44,7 +44,7 @@ from airflow.triggers.testing import SuccessTrigger
 from airflow.utils import timezone
 from airflow.utils.state import DagRunState, State, TaskInstanceState
 from airflow.utils.trigger_rule import TriggerRule
-from airflow.utils.types import DagRunType
+from airflow.utils.types import DagRunTriggeredByType, DagRunType
 from tests.models import DEFAULT_DATE as _DEFAULT_DATE
 from tests.test_utils import db
 from tests.test_utils.config import conf_vars
@@ -109,6 +109,7 @@ class TestDagRun:
             start_date=now,
             state=state,
             external_trigger=False,
+            triggered_by=DagRunTriggeredByType.TEST,
         )
 
         if task_states is not None:
@@ -286,6 +287,7 @@ class TestDagRun:
             execution_date=now,
             data_interval=dag.timetable.infer_manual_data_interval(run_after=now),
             start_date=now,
+            triggered_by=DagRunTriggeredByType.TEST,
         )
 
         # op1 = root
@@ -325,6 +327,7 @@ class TestDagRun:
             data_interval=dag.timetable.infer_manual_data_interval(run_after=now),
             start_date=now,
             session=session,
+            triggered_by=DagRunTriggeredByType.TEST,
         )
 
         ti_op1: TI = dr.get_task_instance(task_id=op1.task_id, session=session)
@@ -353,6 +356,7 @@ class TestDagRun:
             execution_date=DEFAULT_DATE,
             data_interval=dag.timetable.infer_manual_data_interval(run_after=DEFAULT_DATE),
             start_date=DEFAULT_DATE,
+            triggered_by=DagRunTriggeredByType.TEST,
         )
         upstream_ti = dr.get_task_instance(task_id="upstream_task")
         upstream_ti.set_state(TaskInstanceState.RESTARTING, session=session)
@@ -373,6 +377,7 @@ class TestDagRun:
             execution_date=DEFAULT_DATE,
             data_interval=dag.timetable.infer_manual_data_interval(run_after=DEFAULT_DATE),
             start_date=DEFAULT_DATE,
+            triggered_by=DagRunTriggeredByType.TEST,
         )
         next_date = DEFAULT_DATE + datetime.timedelta(days=1)
         dr2 = dag.create_dagrun(
@@ -381,6 +386,7 @@ class TestDagRun:
             execution_date=next_date,
             data_interval=dag.timetable.infer_manual_data_interval(run_after=next_date),
             start_date=next_date,
+            triggered_by=DagRunTriggeredByType.TEST,
         )
         ti1_op1 = dr.get_task_instance(task_id="dop")
         dr2.get_task_instance(task_id="dop")
@@ -540,6 +546,7 @@ class TestDagRun:
             execution_date=now,
             data_interval=dag.timetable.infer_manual_data_interval(now),
             start_date=now,
+            triggered_by=DagRunTriggeredByType.TEST,
         )
 
         # Initial end_date should be NULL
@@ -593,6 +600,7 @@ class TestDagRun:
             execution_date=now,
             data_interval=dag.timetable.infer_manual_data_interval(now),
             start_date=now,
+            triggered_by=DagRunTriggeredByType.TEST,
         )
 
         # Initial end_date should be NULL
@@ -840,6 +848,7 @@ class TestDagRun:
             data_interval=dag.infer_automated_data_interval(DEFAULT_DATE),
             start_date=DEFAULT_DATE if state == DagRunState.RUNNING else None,
             session=session,
+            triggered_by=DagRunTriggeredByType.TEST,
         )
 
         runs = DagRun.next_dagruns_to_examine(state, session).all()
@@ -907,6 +916,7 @@ class TestDagRun:
                 data_interval=dag.infer_automated_data_interval(dag.start_date),
                 start_date=dag.start_date,
                 session=session,
+                triggered_by=DagRunTriggeredByType.TEST,
             )
             ti = dag_run.get_task_instance(dag_task.task_id, session)
             ti.set_state(TaskInstanceState.SUCCESS, session)

@@ -27,6 +27,7 @@ from airflow.operators.subdag import SubDagOperator
 from airflow.utils import timezone
 from airflow.utils.session import create_session
 from airflow.utils.state import State
+from airflow.utils.types import DagRunTriggeredByType
 from tests.test_utils.db import clear_db_runs
 
 pytestmark = pytest.mark.db_test
@@ -56,6 +57,7 @@ def running_subdag(admin_client, dag_maker):
             data_interval=(logical_date, logical_date),
             start_date=timezone.datetime(2016, 1, 1),
             session=session,
+            triggered_by=DagRunTriggeredByType.TEST,
         )
 
         # Now delete the parent DAG but leave the subdag.

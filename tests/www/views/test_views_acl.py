@@ -28,7 +28,7 @@ from airflow.security import permissions
 from airflow.utils import timezone
 from airflow.utils.session import create_session
 from airflow.utils.state import State
-from airflow.utils.types import DagRunType
+from airflow.utils.types import DagRunTriggeredByType, DagRunType
 from airflow.www.views import FILTER_STATUS_COOKIE
 from tests.test_utils.api_connexion_utils import create_user_scope
 from tests.test_utils.db import clear_db_runs
@@ -145,6 +145,7 @@ def init_dagruns(acl_app, reset_dagruns):
         data_interval=(DEFAULT_DATE, DEFAULT_DATE),
         start_date=timezone.utcnow(),
         state=State.RUNNING,
+        triggered_by=DagRunTriggeredByType.TEST,
     )
     acl_app.dag_bag.get_dag("example_subdag_operator").create_dagrun(
         run_type=DagRunType.SCHEDULED,
@@ -152,6 +153,7 @@ def init_dagruns(acl_app, reset_dagruns):
         start_date=timezone.utcnow(),
         data_interval=(DEFAULT_DATE, DEFAULT_DATE),
         state=State.RUNNING,
+        triggered_by=DagRunTriggeredByType.TEST,
     )
     yield
     clear_db_runs()

@@ -32,6 +32,7 @@ from airflow.configuration import (
 )
 from airflow.plugins_manager import AirflowPlugin, EntryPointSource
 from airflow.utils.task_group import TaskGroup
+from airflow.utils.types import DagRunTriggeredByType
 from airflow.www.views import (
     build_scarf_url,
     get_key_paths,
@@ -275,6 +276,7 @@ def test_mark_task_instance_state(test_app):
         data_interval=(start_date, start_date),
         state=State.FAILED,
         run_type=DagRunType.SCHEDULED,
+        triggered_by=DagRunTriggeredByType.TEST,
     )
 
     def get_task_instance(session, task):
@@ -375,6 +377,7 @@ def test_mark_task_group_state(test_app):
         data_interval=(start_date, start_date),
         state=State.FAILED,
         run_type=DagRunType.SCHEDULED,
+        triggered_by=DagRunTriggeredByType.TEST,
     )
 
     def get_task_instance(session, task):

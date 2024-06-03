@@ -30,7 +30,7 @@ from airflow.operators.latest_only import LatestOnlyOperator
 from airflow.utils import timezone
 from airflow.utils.state import State
 from airflow.utils.trigger_rule import TriggerRule
-from airflow.utils.types import DagRunType
+from airflow.utils.types import DagRunTriggeredByType, DagRunType
 from tests.test_utils.db import clear_db_runs, clear_db_xcom
 
 pytestmark = pytest.mark.db_test
@@ -96,6 +96,7 @@ class TestLatestOnlyOperator:
             start_date=timezone.utcnow(),
             execution_date=DEFAULT_DATE,
             state=State.RUNNING,
+            triggered_by=DagRunTriggeredByType.TEST,
         )
 
         self.dag.create_dagrun(
@@ -103,6 +104,7 @@ class TestLatestOnlyOperator:
             start_date=timezone.utcnow(),
             execution_date=timezone.datetime(2016, 1, 1, 12),
             state=State.RUNNING,
+            triggered_by=DagRunTriggeredByType.TEST,
         )
 
         self.dag.create_dagrun(
@@ -110,6 +112,7 @@ class TestLatestOnlyOperator:
             start_date=timezone.utcnow(),
             execution_date=END_DATE,
             state=State.RUNNING,
+            triggered_by=DagRunTriggeredByType.TEST,
         )
 
         latest_task.run(start_date=DEFAULT_DATE, end_date=END_DATE)
@@ -163,6 +166,7 @@ class TestLatestOnlyOperator:
             execution_date=DEFAULT_DATE,
             state=State.RUNNING,
             external_trigger=True,
+            triggered_by=DagRunTriggeredByType.TEST,
         )
 
         self.dag.create_dagrun(
@@ -171,6 +175,7 @@ class TestLatestOnlyOperator:
             execution_date=timezone.datetime(2016, 1, 1, 12),
             state=State.RUNNING,
             external_trigger=True,
+            triggered_by=DagRunTriggeredByType.TEST,
         )
 
         self.dag.create_dagrun(
@@ -179,6 +184,7 @@ class TestLatestOnlyOperator:
             execution_date=END_DATE,
             state=State.RUNNING,
             external_trigger=True,
+            triggered_by=DagRunTriggeredByType.TEST,
         )
 
         latest_task.run(start_date=DEFAULT_DATE, end_date=END_DATE)

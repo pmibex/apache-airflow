@@ -28,7 +28,7 @@ from airflow.operators.empty import EmptyOperator
 from airflow.utils.log.logging_mixin import set_context
 from airflow.utils.state import DagRunState
 from airflow.utils.timezone import datetime
-from airflow.utils.types import DagRunType
+from airflow.utils.types import DagRunTriggeredByType, DagRunType
 from tests.test_utils.config import conf_vars
 from tests.test_utils.db import clear_db_runs
 
@@ -67,6 +67,7 @@ def task_instance():
         execution_date=DEFAULT_DATE,
         run_type=DagRunType.MANUAL,
         data_interval=dag.timetable.infer_manual_data_interval(run_after=DEFAULT_DATE),
+        triggered_by=DagRunTriggeredByType.TEST,
     )
     ti = TaskInstance(task=task, run_id=dagrun.run_id)
     ti.log.disabled = False

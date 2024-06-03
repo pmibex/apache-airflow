@@ -64,7 +64,7 @@ from airflow.utils import timezone
 from airflow.utils.file import list_py_file_paths
 from airflow.utils.session import create_session, provide_session
 from airflow.utils.state import DagRunState, JobState, State, TaskInstanceState
-from airflow.utils.types import DagRunType
+from airflow.utils.types import DagRunTriggeredByType, DagRunType
 from tests.listeners import dag_listener
 from tests.listeners.test_listeners import get_listener_manager
 from tests.models import TEST_DAGS_FOLDER
@@ -1727,6 +1727,7 @@ class TestSchedulerJob:
             start_date=DEFAULT_DATE,
             session=session,
             data_interval=data_interval,
+            triggered_by=DagRunTriggeredByType.TEST,
         )
         scheduler_job = Job()
         session.add(scheduler_job)
@@ -2497,6 +2498,7 @@ class TestSchedulerJob:
             state=None,
             session=session,
             data_interval=data_interval,
+            triggered_by=DagRunTriggeredByType.TEST,
         )
 
         if advance_execution_date:
@@ -2507,6 +2509,7 @@ class TestSchedulerJob:
                 state=None,
                 session=session,
                 data_interval=data_interval,
+                triggered_by=DagRunTriggeredByType.TEST,
             )
         ex_date = dr.execution_date
 
@@ -2589,6 +2592,7 @@ class TestSchedulerJob:
             execution_date=DEFAULT_DATE,
             state=None,
             data_interval=data_interval,
+            triggered_by=DagRunTriggeredByType.TEST,
         )
         self.null_exec.mock_task_fail(dag_id, "test_dagrun_fail", dr.run_id)
 
@@ -2936,6 +2940,7 @@ class TestSchedulerJob:
                     execution_date=next_info.logical_date,
                     data_interval=next_info.data_interval,
                     state=DagRunState.RUNNING,
+                    triggered_by=DagRunTriggeredByType.TEST,
                 )
                 next_info = dag.next_dagrun_info(next_info.data_interval)
                 if next_info is None:
@@ -4077,6 +4082,7 @@ class TestSchedulerJob:
             session=session,
             external_trigger=True,
             data_interval=data_interval,
+            triggered_by=DagRunTriggeredByType.TEST,
         )
         assert dr is not None
         # Run DAG.bulk_write_to_db -- this is run when in DagFileProcessor.process_file
@@ -4162,6 +4168,7 @@ class TestSchedulerJob:
             start_date=timezone.utcnow() - timedelta(seconds=2),
             session=session,
             data_interval=data_interval,
+            triggered_by=DagRunTriggeredByType.TEST,
         )
 
         run1_ti = run1.get_task_instance(task1.task_id, session)
@@ -4173,6 +4180,7 @@ class TestSchedulerJob:
             state=State.QUEUED,
             session=session,
             data_interval=data_interval,
+            triggered_by=DagRunTriggeredByType.TEST,
         )
 
         scheduler_job = Job()
@@ -4890,6 +4898,7 @@ class TestSchedulerJob:
                 run_type=DagRunType.SCHEDULED,
                 session=session,
                 data_interval=data_interval,
+                triggered_by=DagRunTriggeredByType.TEST,
             )
 
             scheduler_job = Job()
@@ -4957,6 +4966,7 @@ class TestSchedulerJob:
                 run_type=DagRunType.SCHEDULED,
                 session=session,
                 data_interval=data_interval,
+                triggered_by=DagRunTriggeredByType.TEST,
             )
 
             scheduler_job = Job(executor=MockExecutor())
@@ -5027,6 +5037,7 @@ class TestSchedulerJob:
                 run_type=DagRunType.SCHEDULED,
                 session=session,
                 data_interval=data_interval,
+                triggered_by=DagRunTriggeredByType.TEST,
             )
             task = dag.get_task(task_id="run_this_last")
 
