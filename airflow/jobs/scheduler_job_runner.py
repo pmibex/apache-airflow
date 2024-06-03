@@ -1899,12 +1899,6 @@ class SchedulerJobRunner(BaseJobRunner, LoggingMixin):
             if executor_obj := self._try_to_load_executor(executor):
                 _executor_to_tis[executor_obj].append(ti)
             else:
-                # TODO: At this point an executor was configured on the TI that isn't currently available.
-                # Do we throw an exception here or do we handle that at a higher level with the expectation
-                # that we shouldn't ever get to here in that case? Or at least that the notification to the
-                # user would have already been done (in the dag parser maybe?).
-                # Currently _try_to_load_executor will throw an exception, but I'm not sure if we should keep
-                # that.
                 continue
 
         return _executor_to_tis
