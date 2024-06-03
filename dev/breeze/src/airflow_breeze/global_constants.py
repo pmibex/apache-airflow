@@ -59,9 +59,9 @@ TESTABLE_INTEGRATIONS = [
     "mongo",
     "mssql",
     "pinot",
-    "trino",
     "qdrant",
-    "ydb"
+    "trino",
+    "ydb",
 ]
 OTHER_INTEGRATIONS = ["statsd", "otel", "openlineage"]
 ALLOWED_DEBIAN_VERSIONS = ["bookworm", "bullseye"]
