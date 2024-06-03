@@ -709,7 +709,6 @@ Groupon
 Grpc
 gRPC
 grpc
-grpcs
 GSoD
 gsuite
 Gunicorn
