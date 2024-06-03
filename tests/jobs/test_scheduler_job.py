@@ -2831,7 +2831,7 @@ class TestSchedulerJob:
         dr.update_state()
         assert dr.state == State.RUNNING
 
-    def test_dagrun_root_after_dagrun_unfinished(self):
+    def test_dagrun_root_after_dagrun_unfinished(self, mock_executor):
         """
         DagRuns with one successful and one future root task -> SUCCESS
 
@@ -2842,7 +2842,7 @@ class TestSchedulerJob:
         dag = self.dagbag.get_dag(dag_id)
         dag.sync_to_db()
 
-        scheduler_job = Job(executor=self.null_exec)
+        scheduler_job = Job()
         self.job_runner = SchedulerJobRunner(job=scheduler_job, num_runs=1, subdir=dag.fileloc)
         run_job(scheduler_job, execute_callable=self.job_runner._execute)
 
