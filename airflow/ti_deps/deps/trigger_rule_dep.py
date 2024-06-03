@@ -48,6 +48,7 @@ class _UpstreamTIStates(NamedTuple):
     success: int
     skipped: int
     failed: int
+    failed_in_queue: int
     upstream_failed: int
     removed: int
     done: int
@@ -77,6 +78,7 @@ class _UpstreamTIStates(NamedTuple):
             success=counter.get(TaskInstanceState.SUCCESS, 0),
             skipped=counter.get(TaskInstanceState.SKIPPED, 0),
             failed=counter.get(TaskInstanceState.FAILED, 0),
+            failed_in_queue=counter.get(TaskInstanceState.FAILED_IN_QUEUE,0),
             upstream_failed=counter.get(TaskInstanceState.UPSTREAM_FAILED, 0),
             removed=counter.get(TaskInstanceState.REMOVED, 0),
             done=sum(counter.values()),
