@@ -27,6 +27,7 @@ from click import IntRange
 from airflow_breeze.commands.ci_image_commands import rebuild_or_pull_ci_image_if_needed
 from airflow_breeze.commands.common_options import (
     option_backend,
+    option_cross_providers_upstream_test,
     option_db_reset,
     option_debug_resources,
     option_downgrade_pendulum,
@@ -204,6 +205,7 @@ def _run_test(
             python_version=python_version,
             parallel_test_types_list=shell_params.parallel_test_types_list,
             helm_test_package=None,
+            cross_providers_upstream_test=shell_params.cross_providers_upstream_test,
         )
     )
     run_cmd.extend(list(extra_pytest_args))
@@ -492,6 +494,7 @@ option_force_sa_warnings = click.option(
 @option_airflow_constraints_reference
 @option_backend
 @option_collect_only
+@option_cross_providers_upstream_test
 @option_db_reset
 @option_debug_resources
 @option_downgrade_pendulum
@@ -609,6 +612,7 @@ def command_for_db_tests(**kwargs):
 )
 @option_airflow_constraints_reference
 @option_collect_only
+@option_cross_providers_upstream_test
 @option_debug_resources
 @option_downgrade_sqlalchemy
 @option_downgrade_pendulum
@@ -660,6 +664,7 @@ def _run_test_command(
     airflow_constraints_reference: str,
     backend: str,
     collect_only: bool,
+    cross_providers_upstream_test: bool,
     db_reset: bool,
     debug_resources: bool,
     downgrade_sqlalchemy: bool,
@@ -715,6 +720,7 @@ def _run_test_command(
         airflow_constraints_reference=airflow_constraints_reference,
         backend=backend,
         collect_only=collect_only,
+        cross_providers_upstream_test=cross_providers_upstream_test,
         downgrade_sqlalchemy=downgrade_sqlalchemy,
         downgrade_pendulum=downgrade_pendulum,
         enable_coverage=enable_coverage,
@@ -936,6 +942,7 @@ def helm_tests(
         parallel_test_types_list=[],
         python_version=shell_params.python,
         helm_test_package=helm_test_package,
+        cross_providers_upstream_test=False,
     )
     cmd = ["docker", "compose", "run", "--service-ports", "--rm", "airflow", *pytest_args, *extra_pytest_args]
     result = run_command(cmd, check=False, env=env, output_outside_the_group=True)
