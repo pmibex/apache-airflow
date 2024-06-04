@@ -22,12 +22,12 @@ import datetime
 import pytest
 from dateutil import relativedelta
 
-from airflow.decorators import task
+from airflow.decorators import task, task_group
 from airflow.decorators.python import _PythonDecoratedOperator
 from airflow.jobs.job import Job
 from airflow.jobs.local_task_job_runner import LocalTaskJobRunner
 from airflow.models import MappedOperator
-from airflow.models.dag import DagModel
+from airflow.models.dag import DAG, DagModel
 from airflow.models.dataset import (
     DagScheduleDatasetReference,
     DatasetEvent,
@@ -39,11 +39,11 @@ from airflow.serialization.pydantic.dag_run import DagRunPydantic
 from airflow.serialization.pydantic.dataset import DatasetEventPydantic
 from airflow.serialization.pydantic.job import JobPydantic
 from airflow.serialization.pydantic.taskinstance import TaskInstancePydantic
-from airflow.serialization.serialized_objects import BaseSerialization
+from airflow.serialization.serialized_objects import BaseSerialization, SerializedBaseOperator
 from airflow.settings import _ENABLE_AIP_44
 from airflow.utils import timezone
 from airflow.utils.state import State
-from airflow.utils.types import DagRunType
+from airflow.utils.types import ELIDED_DAG, DagRunType
 from tests.models import DEFAULT_DATE
 
 pytestmark = pytest.mark.db_test
@@ -74,9 +74,19 @@ def test_serializing_pydantic_task_instance(session, create_task_instance):
 
 @pytest.mark.skipif(not _ENABLE_AIP_44, reason="AIP-44 is disabled")
 def test_deserialize_ti_mapped_op_reserialized_with_refresh_from_task(session, dag_maker):
+    """
+    Making sure that MappedOperator deserializes "properly" when passed along with a TI
+
+    Properly is in quotes cus it doesn't necessarily return to exactly the same object
+    in all aspects but it should have the functionality we need.  Some of the asserts
+    here explore what actually happens and should not be taken to assume that we depend
+    on all the asserts -- some of it is implementation detail.  We should be able
+    to round trip the ti without error and refresh from task.
+    """
     op_class_dict_expected = {
         "_needs_expansion": True,
         "_task_type": "_PythonDecoratedOperator",
+        "_needs_expansion": True,
         "downstream_task_ids": [],
         "next_method": None,
         "start_trigger": None,
@@ -89,7 +99,7 @@ def test_deserialize_ti_mapped_op_reserialized_with_refresh_from_task(session, d
         "task_id": "target",
     }
 
-    with dag_maker():
+    with dag_maker() as dag:
 
         @task
         def source():
@@ -107,8 +117,7 @@ def test_deserialize_ti_mapped_op_reserialized_with_refresh_from_task(session, d
     # roundtrip task
     ser_task = BaseSerialization.serialize(ti.task, use_pydantic_models=True)
     deser_task = BaseSerialization.deserialize(ser_task, use_pydantic_models=True)
-    ti.task.operator_class
-    # this is part of the problem!
+
     assert isinstance(ti.task.operator_class, type)
     assert isinstance(deser_task.operator_class, dict)
 
@@ -117,7 +126,7 @@ def test_deserialize_ti_mapped_op_reserialized_with_refresh_from_task(session, d
     # roundtrip ti
     sered = BaseSerialization.serialize(ti, use_pydantic_models=True)
     desered = BaseSerialization.deserialize(sered, use_pydantic_models=True)
-
+    assert desered.task.dag is ELIDED_DAG
     assert "operator_class" not in sered["__var"]["task"]
 
     assert desered.task.__class__ == MappedOperator
@@ -130,9 +139,63 @@ def test_deserialize_ti_mapped_op_reserialized_with_refresh_from_task(session, d
 
     assert isinstance(desered.task.operator_class, dict)
 
+    # let's check that we can safely add back dag...
+    assert isinstance(dag, DAG)
+    # dag already has this task
+    assert dag.has_task(desered.task.task_id) is True
+    # but the task has no dag
+    assert desered.task.dag is ELIDED_DAG
+    # and there are no upstream / downstreams on the task cus those are wiped out on serialization
+    # and this is wrong / not great but that's how it is
+    assert desered.task.upstream_task_ids == set()
+    assert desered.task.downstream_task_ids == set()
+    # add the dag back
+    desered.task.dag = dag
+    # great, no error
+    # but still, there are no upstream downstreams
+    assert desered.task.upstream_task_ids == set()
+    assert desered.task.downstream_task_ids == set()
+
+
+@pytest.mark.skipif(not _ENABLE_AIP_44, reason="AIP-44 is disabled")
+def test_deserialize_ti_nonmapped_op_reserialized_with_refresh_from_task(session, dag_maker):
+    """Adding similar for non-mapped along with the mapped case for this change.
+
+    We should be able to round trip the ti without error and refresh from task.
+    """
+    with dag_maker():
+
+        @task
+        def source():
+            return [1, 2, 3]
+
+        @task
+        def target(val=None):
+            print(val)
+
+        target(source())
+    dr = dag_maker.create_dagrun()
+    ti = dr.task_instances[1]
+
+    # roundtrip task
+    ser_task = BaseSerialization.serialize(ti.task, use_pydantic_models=True)
+    deser_task = BaseSerialization.deserialize(ser_task, use_pydantic_models=True)
+    ti.task.operator_class
+    assert isinstance(ti.task.operator_class, type)
+    assert ti.task.operator_class == _PythonDecoratedOperator
+    ti.refresh_from_task(deser_task)
+    # roundtrip ti
+    sered = BaseSerialization.serialize(ti, use_pydantic_models=True)
+    desered = BaseSerialization.deserialize(sered, use_pydantic_models=True)
+    assert "operator_class" not in sered["__var"]["task"]
+    assert desered.task.__class__ == SerializedBaseOperator
+    # assert desered.task.dag is ELIDED_DAG
+    assert desered.task.operator_class == SerializedBaseOperator
+    assert desered.task.__class__ == SerializedBaseOperator
+    desered.refresh_from_task(deser_task)
     resered = BaseSerialization.serialize(desered, use_pydantic_models=True)
     deresered = BaseSerialization.deserialize(resered, use_pydantic_models=True)
-    assert deresered.task.operator_class == desered.task.operator_class == op_class_dict_expected
+    assert deresered.task.operator_class == desered.task.operator_class == SerializedBaseOperator
 
 
 @pytest.mark.skipif(not _ENABLE_AIP_44, reason="AIP-44 is disabled")
@@ -267,3 +330,66 @@ def test_serializing_pydantic_dataset_event(session, create_task_instance, creat
 
     deserialized_dr = DagRunPydantic.model_validate_json(json_string_dr)
     assert len(deserialized_dr.consumed_dataset_events) == 3
+
+
+def test_needs_expansion_serialization(session, dag_maker):
+    """
+    We evaluate whether a task needs to be expanded at serialization time
+    because on roundtrip the task object loses its dag and and some knowledge
+    about its context in the dag, therefore we can't currently evaluate
+    "needs expansion" on the server side.
+    """
+    with dag_maker():
+
+        @task
+        def source():
+            return [1, 2, 3]
+
+        @task_group
+        def thing(val=None):
+            @task
+            def target(val=None):
+                print(val)
+
+            target(val)
+
+        # source() >> target()
+        s = source()
+        tg = thing.expand(val=s)  # tg is a mapped task group
+
+    # first let's look at round trip behavior when task is passed as part of a TI
+    dr = dag_maker.create_dagrun()
+    tis = dr.task_instances
+    ti = next(x for x in tis if x.task_id == "thing.target")
+    # there's no cached value for needs_expansion yet...
+    assert ti.task._needs_expansion is None
+    ser_ti = BaseSerialization.serialize(ti, use_pydantic_models=True)
+    deser_ti = BaseSerialization.deserialize(ser_ti, use_pydantic_models=True)
+    # but when we serialize, we evaluate needs expansion and store on the cache attr
+    # and when we deserialize, it's there
+    assert deser_ti.task._needs_expansion is True
+
+    with dag_maker(dag_id="second_one"):
+
+        @task
+        def source():
+            return [1, 2, 3]
+
+        @task_group
+        def thing(val=None):
+            @task
+            def target(val=None):
+                print(val)
+
+            target(val)
+
+        s = source()
+        tg = thing.expand(val=s)  # tg is a mapped task group
+
+    # now let's check what happens when task passed in isolation
+    # first let's verify that cache val is unset
+    task_obj = next(tg.iter_tasks())
+    assert task_obj._needs_expansion is None
+    ser_task = BaseSerialization.serialize(task_obj, strict=True, use_pydantic_models=True)
+    deser_task = BaseSerialization.deserialize(ser_task, use_pydantic_models=True)
+    assert deser_task._needs_expansion is True
