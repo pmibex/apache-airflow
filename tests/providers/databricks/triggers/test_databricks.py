@@ -17,6 +17,7 @@
 # under the License.
 from __future__ import annotations
 
+import asyncio
 from unittest import mock
 
 import pytest
@@ -250,3 +251,69 @@ class TestDatabricksExecutionTrigger:
             )
         mock_sleep.assert_called_once()
         mock_sleep.assert_called_with(POLLING_INTERVAL_SECONDS)
+
+    @pytest.mark.parametrize("safe_to_cancel", [True, False])
+    @pytest.mark.asyncio
+    @mock.patch("airflow.providers.databricks.hooks.databricks.DatabricksHook.a_get_run_state")
+    @mock.patch("airflow.providers.databricks.hooks.databricks.DatabricksHook.a_cancel_run")
+    @mock.patch("airflow.providers.databricks.triggers.databricks.DatabricksExecutionTrigger.safe_to_cancel")
+    async def test_cancellation_cancels_job(
+        self, mock_safe_to_cancel, mock_cancel_run, mock_get_run_state, safe_to_cancel, caplog
+    ):
+        mock_safe_to_cancel.return_value = safe_to_cancel
+        mock_get_run_state.return_value = RunState(
+            life_cycle_state=LIFE_CYCLE_STATE_PENDING,
+            state_message="",
+            result_state="PENDING",
+        )
+
+        async def trigger_runner():
+            async for _ in self.trigger.run():
+                pass
+
+        task = asyncio.create_task(trigger_runner())
+        await asyncio.sleep(1)
+        task.cancel()
+
+        try:
+            await task
+        except asyncio.CancelledError:
+            if safe_to_cancel:
+                mock_cancel_run.assert_awaited_once_with(RUN_ID)
+
+                assert f"run_id {RUN_ID} is being terminated" in caplog.text
+                assert f"run_id {RUN_ID} was cancelled" in caplog.text
+        except Exception as e:
+            pytest.fail(f"Unexpected exception raised: {e}")
+
+    @pytest.mark.asyncio
+    @mock.patch("airflow.providers.databricks.hooks.databricks.DatabricksHook.a_get_run_state")
+    @mock.patch("airflow.providers.databricks.hooks.databricks.DatabricksHook.a_cancel_run")
+    @mock.patch("airflow.providers.databricks.triggers.databricks.DatabricksExecutionTrigger.safe_to_cancel")
+    async def test_cancellation_skips_job_cancel_if_in_terminal_state(
+        self, mock_safe_to_cancel, mock_cancel_run, mock_get_run_state, caplog
+    ):
+        mock_safe_to_cancel.return_value = True
+        mock_get_run_state.side_effect = [
+            RunState(life_cycle_state=LIFE_CYCLE_STATE_PENDING, state_message="", result_state="PENDING"),
+            RunState(
+                life_cycle_state=LIFE_CYCLE_STATE_TERMINATED, state_message="", result_state="TERMINATED"
+            ),
+        ]
+
+        async def trigger_runner():
+            async for _ in self.trigger.run():
+                pass
+
+        task = asyncio.create_task(trigger_runner())
+        await asyncio.sleep(1)
+        task.cancel()
+
+        try:
+            await task
+        except asyncio.CancelledError:
+            mock_cancel_run.assert_not_called()
+
+            assert f"run_id {RUN_ID} is being terminated" in caplog.text
+        except Exception as e:
+            pytest.fail(f"Unexpected exception raised: {e}")
