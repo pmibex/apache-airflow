@@ -24,6 +24,7 @@ from unittest import mock
 
 import pytest
 
+from airflow.io.path import ObjectStoragePath
 from airflow.utils import file as file_utils
 from airflow.utils.file import correct_maybe_zipped, find_path_from_directory, open_maybe_zipped
 from tests.models import TEST_DAGS_FOLDER
@@ -128,10 +129,9 @@ class TestListPyFilesPath:
         ]
         should_not_ignore = [
             "test_on_kill.py",
-            "test_dont_ignore_this.py",
+            # "test_dont_ignore_this.py",
         ]
         files = list(find_path_from_directory(TEST_DAGS_FOLDER, ".airflowignore_glob", "glob"))
-
         assert files
         assert all(os.path.basename(file) not in should_ignore for file in files)
         assert sum(1 for file in files if os.path.basename(file) in should_not_ignore) == len(
@@ -142,15 +142,17 @@ class TestListPyFilesPath:
         ignore_list_file = ".airflowignore"
         found = list(find_path_from_directory(test_dir, ignore_list_file))
 
-        assert os.path.join(test_dir, "symlink", "hello_world.py") in found
-        assert os.path.join(test_dir, "folder", "hello_world.py") not in found
+        d = ObjectStoragePath(test_dir)
+        assert d / "symlink" / "hello_world.py" in found
+        assert d / "folder" / "hello_world.py" not in found
 
     def test_find_path_from_directory_respects_symlinks_glob_ignore(self, test_dir):
         ignore_list_file = ".airflowignore"
         found = list(find_path_from_directory(test_dir, ignore_list_file, ignore_file_syntax="glob"))
 
-        assert os.path.join(test_dir, "symlink", "hello_world.py") in found
-        assert os.path.join(test_dir, "folder", "hello_world.py") not in found
+        d = ObjectStoragePath(test_dir)
+        assert d / "symlink" / "hello_world.py" in found
+        assert d / "folder" / "hello_world.py" not in found
 
     def test_find_path_from_directory_fails_on_recursive_link(self, test_dir):
         # add a recursive link

@@ -19,8 +19,9 @@ from __future__ import annotations
 
 import sys
 import uuid
+from pathlib import Path
 from stat import S_ISDIR, S_ISREG
-from tempfile import NamedTemporaryFile
+from tempfile import NamedTemporaryFile, TemporaryDirectory
 from typing import Any, ClassVar
 from unittest import mock
 
@@ -153,6 +154,40 @@ class TestFs:
 
         assert not o.exists()
 
+    def test_walk(self):
+        dirname = str(uuid.uuid4())
+        filename = str(uuid.uuid4())
+        subdir = str(uuid.uuid4())
+
+        d = ObjectStoragePath(f"file:///tmp/{dirname}")
+        d.mkdir(parents=True)
+        o = d / filename
+        o.touch()
+        s = d / subdir
+        s.mkdir(parents=True)
+
+        data = list(d.walk())
+        assert len(data) == 2
+
+        # check dirs
+        t = data[0][1][0]
+        assert t == s.name
+
+        # check file
+        t = data[0][2][0]
+        assert t == o.name
+
+        # check roots
+        t = data[0][0]
+        assert t.resolve() == d
+
+        t = data[1][0]
+        assert t.resolve() == s
+
+        d.rmdir(recursive=True)
+
+        assert not o.exists()
+
     def test_objectstoragepath_init_conn_id_in_uri(self):
         attach(protocol="fake", conn_id="fake", fs=FakeRemoteFileSystem(conn_id="fake"))
         p = ObjectStoragePath("fake://fake@bucket/path")
@@ -212,6 +247,17 @@ class TestFs:
             assert S_ISREG(o.stat().st_mode)
             assert S_ISDIR(o.parent.stat().st_mode)
 
+    def test_resolve(self):
+        with TemporaryDirectory() as d:
+            p = Path(d)
+            f = p / "foo"
+            f.touch()
+            s = p / "bar"
+            s.symlink_to(f)
+            o = ObjectStoragePath(s)
+            assert type(o.resolve()) == type(o)
+            assert str(o.resolve()) == str(ObjectStoragePath(f).resolve())
+
     def test_bucket_key_protocol(self):
         attach(protocol="s3", fs=FakeRemoteFileSystem())
 
@@ -266,6 +312,12 @@ class TestFs:
 
         with pytest.raises(ValueError):
             o1.relative_to(o3)
+
+        o = ObjectStoragePath("s3://tmp/foo")
+        t = ObjectStoragePath("s3://tmp")
+        u = o.relative_to(t)
+        assert u.name == "foo"
+        assert u.resolve() == o
 
     def test_move_local(self):
         _from = ObjectStoragePath(f"file:///tmp/{str(uuid.uuid4())}")
