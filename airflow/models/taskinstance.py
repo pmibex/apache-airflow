@@ -1209,6 +1209,7 @@ def _log_state(*, task_instance: TaskInstance | TaskInstancePydantic, lead_msg: 
         _date_or_empty(task_instance=task_instance, attr="execution_date"),
         _date_or_empty(task_instance=task_instance, attr="start_date"),
         _date_or_empty(task_instance=task_instance, attr="end_date"),
+        stacklevel=2,
     )
 
 
@@ -3454,8 +3455,13 @@ class TaskInstance(Base, LoggingMixin):
                     run_id=ti.run_id,
                 ),
                 session=session,
-                nowait=True,
-            ).one()
+                skip_locked=True,
+            ).one_or_none()
+
+            if not dag_run:
+                cls.logger().debug("Skip locked rows, rollback")
+                session.rollback()
+                return
 
             task = ti.task
             if TYPE_CHECKING:
@@ -3501,7 +3507,7 @@ class TaskInstance(Base, LoggingMixin):
 
         except OperationalError as e:
             # Any kind of DB error here is _non fatal_ as this block is just an optimisation.
-            cls.logger().debug(
+            cls.logger().warning(
                 "Skipping mini scheduling run due to exception: %s",
                 e.statement,
                 exc_info=True,

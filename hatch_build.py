@@ -42,7 +42,7 @@ PROVIDER_DEPENDENCIES = json.loads(GENERATED_PROVIDERS_DEPENDENCIES_FILE.read_te
 PRE_INSTALLED_PROVIDERS = [
     "common.io",
     "common.sql",
-    "fab>=1.0.2dev0",
+    "fab>=1.0.2",
     "ftp",
     "http",
     "imap",
@@ -182,6 +182,7 @@ DOC_EXTRAS: dict[str, list[str]] = {
     ],
     "doc-gen": [
         "apache-airflow[doc]",
+        "diagrams>=0.23.4",
         "eralchemy2>=1.3.8",
     ],
     # END OF doc extras
