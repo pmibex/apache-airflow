@@ -3616,6 +3616,73 @@ class TestTaskInstance:
         assert State.SKIPPED == ti.state
         assert callback_function.called
 
+    def test_rendered_map_index_on_dry_run(self, dag_maker, session):
+        from airflow.utils.task_instance_session import set_current_task_instance_session
+
+        with dag_maker(dag_id="example", session=session) as dag:
+
+            @dag.task
+            def emit():
+                return ["a", "b"]
+
+            @dag.task(map_index_template="instance-map-index-{{ task.op_kwargs['value'] * 3 }}")
+            def example(value: str):
+                # Whatever lies here won't be executed as we trigger a `dry_run()` only.
+                assert value
+
+            example.expand(value=emit())
+
+        dag_run = dag_maker.create_dagrun()
+        emit_ti = dag_run.get_task_instance("emit", session=session)
+        emit_ti.refresh_from_task(dag.get_task("emit"))
+        emit_ti.run()
+
+        example_task = dag.get_task("example")
+        mapped_tis, _ = example_task.expand_mapped_task(dag_run.run_id, session=session)
+
+        rendered_map_index = []
+        with set_current_task_instance_session(session):
+            for ti in mapped_tis:
+                ti.task = example_task
+                ti.refresh_from_task(example_task)
+                ti.dry_run()
+                rendered_map_index.append(ti.rendered_map_index)
+
+        assert sorted(rendered_map_index) == ["instance-map-index-aaa", "instance-map-index-bbb"]
+
+    def test_rendered_map_index_example_from_doc(self, dag_maker, session):
+        from airflow.operators.python import get_current_context
+
+        with dag_maker(dag_id="example", session=session) as dag:
+
+            @dag.task
+            def emit():
+                return ["a", "b"]
+
+            @dag.task(map_index_template="{{ my_variable }}")
+            def my_task(my_value: str):
+                context = get_current_context()
+                context["my_variable"] = my_value * 3  # type: ignore[typeddict-unknown-key]
+
+            my_task.expand(my_value=emit())
+
+        dag_run = dag_maker.create_dagrun()
+        emit_ti = dag_run.get_task_instance("emit", session=session)
+        emit_ti.refresh_from_task(dag.get_task("emit"))
+        emit_ti.run()
+
+        my_task = dag.get_task("my_task")
+        mapped_tis, _ = my_task.expand_mapped_task(dag_run.run_id, session=session)
+
+        rendered_map_index = []
+        for ti in mapped_tis:
+            ti.task = my_task
+            ti.refresh_from_task(my_task)
+            ti.run()
+            rendered_map_index.append(ti.rendered_map_index)
+
+        assert sorted(rendered_map_index) == ["aaa", "bbb"]
+
 
 @pytest.mark.parametrize("pool_override", [None, "test_pool2"])
 @pytest.mark.parametrize("queue_by_policy", [None, "forced_queue"])
@@ -4255,7 +4322,8 @@ class TestMappedTaskInstanceReceiveValue:
 
         for ti in sorted(mapped_tis, key=operator.attrgetter("map_index")):
             ti.refresh_from_task(show_task)
-            ti.run()
+            ti.dry_run()
+
         assert outputs == expected_outputs
 
     def test_map_product(self, dag_maker, session):

@@ -2962,14 +2962,6 @@ class TaskInstance(Base, LoggingMixin):
                 previous_state=TaskInstanceState.QUEUED, task_instance=self, session=session
             )
 
-            def _render_map_index(context: Context, *, jinja_env: jinja2.Environment | None) -> str | None:
-                """Render named map index if the DAG author defined map_index_template at the task level."""
-                if jinja_env is None or (template := context.get("map_index_template")) is None:
-                    return None
-                rendered_map_index = jinja_env.from_string(template).render(context)
-                log.debug("Map index rendered as %s", rendered_map_index)
-                return rendered_map_index
-
             # Execute the task.
             with set_current_context(context):
                 try:
@@ -2977,10 +2969,10 @@ class TaskInstance(Base, LoggingMixin):
                 except Exception:
                     # If the task failed, swallow rendering error so it doesn't mask the main error.
                     with contextlib.suppress(jinja2.TemplateSyntaxError, jinja2.UndefinedError):
-                        self.rendered_map_index = _render_map_index(context, jinja_env=jinja_env)
+                        self.rendered_map_index = self._render_map_index(context, jinja_env=jinja_env)
                     raise
                 else:  # If the task succeeded, render normally to let rendering error bubble up.
-                    self.rendered_map_index = _render_map_index(context, jinja_env=jinja_env)
+                    self.rendered_map_index = self._render_map_index(context, jinja_env=jinja_env)
 
             # Run post_execute callback
             self.task.post_execute(context=context, result=result)
@@ -2989,6 +2981,18 @@ class TaskInstance(Base, LoggingMixin):
         # Same metric with tagging
         Stats.incr("operator_successes", tags={**self.stats_tags, "task_type": self.task.task_type})
         Stats.incr("ti_successes", tags=self.stats_tags)
+
+    def _render_map_index(self, context: Context, *, jinja_env: jinja2.Environment | None) -> str | None:
+        """Render named map index if the DAG author defined map_index_template at the task level."""
+        if TYPE_CHECKING:
+            assert self.task
+
+        if jinja_env is None or (template := context.get("map_index_template")) is None:
+            return None
+
+        rendered_map_index = self.task.render_template(template, context, jinja_env)
+        self.log.debug("Map index rendered as %s", rendered_map_index)
+        return rendered_map_index
 
     def _execute_task(self, context: Context, task_orig: Operator):
         """
@@ -3065,10 +3069,22 @@ class TaskInstance(Base, LoggingMixin):
             assert self.task
 
         self.task = self.task.prepare_for_execution()
-        self.render_templates()
+        context = self.get_template_context(ignore_param_exceptions=False)
+
+        jinja_env = None
+        dag = self.task.get_dag()
+        if dag is not None:
+            jinja_env = dag.get_template_env()
+
         if TYPE_CHECKING:
             assert isinstance(self.task, BaseOperator)
+        self.render_templates(context=context, jinja_env=jinja_env)
         self.task.dry_run()
+
+        self.rendered_map_index = self._render_map_index(
+            context,
+            jinja_env=jinja_env,
+        )
 
     @provide_session
     def _handle_reschedule(
