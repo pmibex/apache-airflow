@@ -25,13 +25,28 @@ import { getGroupAndMapSummary } from "src/utils";
 import { getDuration, formatDuration } from "src/datetime_utils";
 import { SimpleStatus } from "src/dag/StatusBox";
 import Time from "src/components/Time";
-import { ClipboardText } from "src/components/Clipboard";
+import { ClipboardText, ClipboardButton } from "src/components/Clipboard";
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import { oneLight } from "react-syntax-highlighter/dist/esm/styles/prism";
 import type {
   API,
   Task,
   TaskInstance as GridTaskInstance,
   TaskState,
 } from "src/types";
+
+const languageMapping: Record<string, string> = {
+  bash: "bash",
+  doc: "plaintext",
+  hql: "sql",
+  html: "html",
+  jinja: "django",
+  json: "json",
+  md: "markdown",
+  python: "python",
+  sql: "sql",
+  yaml: "yaml",
+};
 
 interface Props {
   gridInstance?: GridTaskInstance;
@@ -287,22 +302,44 @@ const Details = ({ gridInstance, taskInstance, group }: Props) => {
               {Object.keys(taskInstance.renderedFields).map((key) => {
                 const renderedFields = taskInstance.renderedFields as Record<
                   string,
-                  unknown
+                  Record<string, string | null>
                 >;
-                let field = renderedFields[key];
+
+                let { value: field } = renderedFields[key];
+                const { renderer } = renderedFields[key];
+                const language: string = renderer
+                  ? languageMapping[renderer] ?? "plaintext"
+                  : "plaintext";
+
                 if (field) {
                   if (typeof field !== "string") {
                     try {
-                      field = JSON.stringify(field);
+                      field = JSON.stringify(field, null, 4);
                     } catch (e) {
                       // skip
                     }
                   }
+
                   return (
                     <Tr key={key}>
                       <Td>{key}</Td>
                       <Td>
-                        <Code fontSize="md">{field as string}</Code>
+                        <Flex alignItems="right">
+                          <SyntaxHighlighter
+                            fontSize="md"
+                            language={language}
+                            style={oneLight}
+                            wrapLongLines
+                          >
+                            {field as string}
+                          </SyntaxHighlighter>
+                          <ClipboardButton
+                            ml={2}
+                            mt={2}
+                            iconOnly
+                            value={field as string}
+                          />
+                        </Flex>
                       </Td>
                     </Tr>
                   );
