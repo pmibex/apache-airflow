@@ -16,17 +16,31 @@
 # under the License.
 from __future__ import annotations
 
-from typing import Callable
+from typing import TYPE_CHECKING, Callable
 from unittest import mock
 
 import pytest
-from openlineage.client.facet import (
-    ExternalQueryRunFacet,
-    ExtractionError,
-    ExtractionErrorRunFacet,
-    SqlJobFacet,
-)
-from openlineage.client.run import Dataset
+
+if TYPE_CHECKING:
+    from openlineage.client.event_v2 import Dataset
+    from openlineage.client.generated.external_query_run import ExternalQueryRunFacet
+    from openlineage.client.generated.extraction_error_run import Error, ExtractionErrorRunFacet
+    from openlineage.client.generated.sql_job import SQLJobFacet
+else:
+    try:
+        from openlineage.client.event_v2 import Dataset
+        from openlineage.client.generated.external_query_run import ExternalQueryRunFacet
+        from openlineage.client.generated.extraction_error_run import Error, ExtractionErrorRunFacet
+        from openlineage.client.generated.sql_job import SQLJobFacet
+    except ImportError:
+        from openlineage.client.facet import (
+            ExternalQueryRunFacet,
+            ExtractionError as Error,
+            ExtractionErrorRunFacet,
+            SqlJobFacet as SQLJobFacet,
+        )
+        from openlineage.client.run import Dataset
+
 
 from airflow.providers.openlineage.extractors import OperatorLineage
 from airflow.providers.openlineage.sqlparser import DatabaseInfo
@@ -128,7 +142,7 @@ class TestCopyFromExternalStageToSnowflake:
                     externalQueryId="query_id_123", source="snowflake_scheme://authority"
                 )
             },
-            job_facets={"sql": SqlJobFacet(query=expected_sql)},
+            job_facets={"sql": SQLJobFacet(query=expected_sql)},
         )
 
     @pytest.mark.parametrize("rows", (None, []))
@@ -164,7 +178,7 @@ class TestCopyFromExternalStageToSnowflake:
                     externalQueryId="query_id_123", source="snowflake_scheme://authority"
                 )
             },
-            job_facets={"sql": SqlJobFacet(query=expected_sql)},
+            job_facets={"sql": SQLJobFacet(query=expected_sql)},
         )
 
     @mock.patch("airflow.providers.snowflake.transfers.copy_into_snowflake.SnowflakeHook")
@@ -194,13 +208,13 @@ class TestCopyFromExternalStageToSnowflake:
                 totalTasks=4,
                 failedTasks=2,
                 errors=[
-                    ExtractionError(
+                    Error(
                         errorMessage="Unable to extract Dataset namespace and name.",
                         stackTrace=None,
                         task="azure://my_account.another_weird-url.net/con/file.csv",
                         taskNumber=None,
                     ),
-                    ExtractionError(
+                    Error(
                         errorMessage="Unable to extract Dataset namespace and name.",
                         stackTrace=None,
                         task="azure://my_account.weird-url.net/azure_container/dir3/file.csv",
@@ -227,5 +241,5 @@ class TestCopyFromExternalStageToSnowflake:
             inputs=expected_inputs,
             outputs=expected_outputs,
             run_facets=expected_run_facets,
-            job_facets={"sql": SqlJobFacet(query=expected_sql)},
+            job_facets={"sql": SQLJobFacet(query=expected_sql)},
         )

@@ -336,12 +336,28 @@ class GCSDeleteObjectsOperator(GoogleCloudBaseOperator):
             hook.delete(bucket_name=self.bucket_name, object_name=object_name)
 
     def get_openlineage_facets_on_start(self):
-        from openlineage.client.facet import (
-            LifecycleStateChange,
-            LifecycleStateChangeDatasetFacet,
-            LifecycleStateChangeDatasetFacetPreviousIdentifier,
-        )
-        from openlineage.client.run import Dataset
+        if TYPE_CHECKING:
+            from openlineage.client.event_v2 import Dataset
+            from openlineage.client.generated.lifecycle_state_change_dataset import (
+                LifecycleStateChange,
+                LifecycleStateChangeDatasetFacet,
+                PreviousIdentifier,
+            )
+        else:
+            try:
+                from openlineage.client.event_v2 import Dataset
+                from openlineage.client.generated.lifecycle_state_change_dataset import (
+                    LifecycleStateChange,
+                    LifecycleStateChangeDatasetFacet,
+                    PreviousIdentifier,
+                )
+            except ImportError:
+                from openlineage.client.facet import (
+                    LifecycleStateChange,
+                    LifecycleStateChangeDatasetFacet,
+                    LifecycleStateChangeDatasetFacetPreviousIdentifier as PreviousIdentifier,
+                )
+                from openlineage.client.run import Dataset
 
         from airflow.providers.openlineage.extractors import OperatorLineage
 
@@ -365,7 +381,7 @@ class GCSDeleteObjectsOperator(GoogleCloudBaseOperator):
                 facets={
                     "lifecycleStateChange": LifecycleStateChangeDatasetFacet(
                         lifecycleStateChange=LifecycleStateChange.DROP.value,
-                        previousIdentifier=LifecycleStateChangeDatasetFacetPreviousIdentifier(
+                        previousIdentifier=PreviousIdentifier(
                             namespace=bucket_url,
                             name=object_name,
                         ),
@@ -645,7 +661,13 @@ class GCSFileTransformOperator(GoogleCloudBaseOperator):
             )
 
     def get_openlineage_facets_on_start(self):
-        from openlineage.client.run import Dataset
+        if TYPE_CHECKING:
+            from openlineage.client.event_v2 import Dataset
+        else:
+            try:
+                from openlineage.client.event_v2 import Dataset
+            except ImportError:
+                from openlineage.client.run import Dataset
 
         from airflow.providers.openlineage.extractors import OperatorLineage
 
@@ -920,7 +942,7 @@ class GCSTimeSpanFileTransformOperator(GoogleCloudBaseOperator):
 
     def get_openlineage_facets_on_complete(self, task_instance):
         """Implement on_complete as execute() resolves object prefixes."""
-        from openlineage.client.run import Dataset
+        from openlineage.client.event_v2 import Dataset
 
         from airflow.providers.openlineage.extractors import OperatorLineage
 

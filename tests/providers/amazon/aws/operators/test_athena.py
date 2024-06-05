@@ -17,17 +17,31 @@
 from __future__ import annotations
 
 import json
+from typing import TYPE_CHECKING
 from unittest import mock
 
 import pytest
-from openlineage.client.facet import (
-    SchemaDatasetFacet,
-    SchemaField,
-    SqlJobFacet,
-    SymlinksDatasetFacet,
-    SymlinksDatasetFacetIdentifiers,
-)
-from openlineage.client.run import Dataset
+
+if TYPE_CHECKING:
+    from openlineage.client.event_v2 import Dataset
+    from openlineage.client.generated.schema_dataset import SchemaDatasetFacet, SchemaDatasetFacetFields
+    from openlineage.client.generated.sql_job import SQLJobFacet
+    from openlineage.client.generated.symlinks_dataset import Identifier, SymlinksDatasetFacet
+else:
+    try:
+        from openlineage.client.event_v2 import Dataset
+        from openlineage.client.generated.schema_dataset import SchemaDatasetFacet, SchemaDatasetFacetFields
+        from openlineage.client.generated.sql_job import SQLJobFacet
+        from openlineage.client.generated.symlinks_dataset import Identifier, SymlinksDatasetFacet
+    except ImportError:
+        from openlineage.client.facet import (
+            SchemaDatasetFacet,
+            SchemaField as SchemaDatasetFacetFields,
+            SqlJobFacet as SQLJobFacet,
+            SymlinksDatasetFacet,
+            SymlinksDatasetFacetIdentifiers as Identifier,
+        )
+        from openlineage.client.run import Dataset
 
 from airflow.exceptions import AirflowException, TaskDeferred
 from airflow.models import DAG, DagRun, TaskInstance
@@ -294,7 +308,7 @@ class TestAthenaOperator:
                     facets={
                         "symlinks": SymlinksDatasetFacet(
                             identifiers=[
-                                SymlinksDatasetFacetIdentifiers(
+                                Identifier(
                                     namespace="s3://bucket",
                                     name="/discount/data/path/",
                                     type="TABLE",
@@ -303,27 +317,27 @@ class TestAthenaOperator:
                         ),
                         "schema": SchemaDatasetFacet(
                             fields=[
-                                SchemaField(
+                                SchemaDatasetFacetFields(
                                     name="ID",
                                     type="int",
                                     description="from deserializer",
                                 ),
-                                SchemaField(
+                                SchemaDatasetFacetFields(
                                     name="AMOUNT_OFF",
                                     type="int",
                                     description="from deserializer",
                                 ),
-                                SchemaField(
+                                SchemaDatasetFacetFields(
                                     name="CUSTOMER_EMAIL",
                                     type="varchar",
                                     description="from deserializer",
                                 ),
-                                SchemaField(
+                                SchemaDatasetFacetFields(
                                     name="STARTS_ON",
                                     type="timestamp",
                                     description="from deserializer",
                                 ),
-                                SchemaField(
+                                SchemaDatasetFacetFields(
                                     name="ENDS_ON",
                                     type="timestamp",
                                     description="from deserializer",
@@ -340,7 +354,7 @@ class TestAthenaOperator:
                     facets={
                         "symlinks": SymlinksDatasetFacet(
                             identifiers=[
-                                SymlinksDatasetFacetIdentifiers(
+                                Identifier(
                                     namespace="s3://bucket",
                                     name="/data/test_table/data/path",
                                     type="TABLE",
@@ -349,7 +363,7 @@ class TestAthenaOperator:
                         ),
                         "schema": SchemaDatasetFacet(
                             fields=[
-                                SchemaField(
+                                SchemaDatasetFacetFields(
                                     name="column",
                                     type="string",
                                     description="from deserializer",
@@ -361,7 +375,7 @@ class TestAthenaOperator:
                 Dataset(namespace="s3://test_s3_bucket", name="/"),
             ],
             job_facets={
-                "sql": SqlJobFacet(
+                "sql": SQLJobFacet(
                     query="INSERT INTO TEST_TABLE SELECT CUSTOMER_EMAIL FROM DISCOUNTS",
                 )
             },

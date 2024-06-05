@@ -19,7 +19,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Sequence
+from typing import TYPE_CHECKING, Any, Sequence
 
 from airflow.models import BaseOperator
 from airflow.providers.snowflake.hooks.snowflake import SnowflakeHook
@@ -227,13 +227,25 @@ class CopyFromExternalStageToSnowflakeOperator(BaseOperator):
         """Implement _on_complete because we rely on return value of a query."""
         import re
 
-        from openlineage.client.facet import (
-            ExternalQueryRunFacet,
-            ExtractionError,
-            ExtractionErrorRunFacet,
-            SqlJobFacet,
-        )
-        from openlineage.client.run import Dataset
+        if TYPE_CHECKING:
+            from openlineage.client.event_v2 import Dataset
+            from openlineage.client.generated.external_query_run import ExternalQueryRunFacet
+            from openlineage.client.generated.extraction_error_run import Error, ExtractionErrorRunFacet
+            from openlineage.client.generated.sql_job import SQLJobFacet
+        else:
+            try:
+                from openlineage.client.event_v2 import Dataset
+                from openlineage.client.generated.external_query_run import ExternalQueryRunFacet
+                from openlineage.client.generated.extraction_error_run import Error, ExtractionErrorRunFacet
+                from openlineage.client.generated.sql_job import SQLJobFacet
+            except ImportError:
+                from openlineage.client.facet import (
+                    ExternalQueryRunFacet,
+                    ExtractionError as Error,
+                    ExtractionErrorRunFacet,
+                    SqlJobFacet as SQLJobFacet,
+                )
+                from openlineage.client.run import Dataset
 
         from airflow.providers.openlineage.extractors import OperatorLineage
         from airflow.providers.openlineage.sqlparser import SQLParser
@@ -260,7 +272,7 @@ class CopyFromExternalStageToSnowflakeOperator(BaseOperator):
                 totalTasks=len(query_results),
                 failedTasks=len(extraction_error_files),
                 errors=[
-                    ExtractionError(
+                    Error(
                         errorMessage="Unable to extract Dataset namespace and name.",
                         stackTrace=None,
                         task=file_uri,
@@ -292,6 +304,6 @@ class CopyFromExternalStageToSnowflakeOperator(BaseOperator):
         return OperatorLineage(
             inputs=input_datasets,
             outputs=[Dataset(namespace=snowflake_namespace, name=dest_name)],
-            job_facets={"sql": SqlJobFacet(query=query)},
+            job_facets={"sql": SQLJobFacet(query=query)},
             run_facets=run_facets,
         )

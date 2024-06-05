@@ -743,12 +743,22 @@ class GCSToBigQueryOperator(BaseOperator):
         """Implement on_complete as we will include final BQ job id."""
         from pathlib import Path
 
-        from openlineage.client.facet import (
-            ExternalQueryRunFacet,
-            SymlinksDatasetFacet,
-            SymlinksDatasetFacetIdentifiers,
-        )
-        from openlineage.client.run import Dataset
+        if TYPE_CHECKING:
+            from openlineage.client.event_v2 import Dataset
+            from openlineage.client.generated.external_query_run import ExternalQueryRunFacet
+            from openlineage.client.generated.symlinks_dataset import Identifier, SymlinksDatasetFacet
+        else:
+            try:
+                from openlineage.client.event_v2 import Dataset
+                from openlineage.client.generated.external_query_run import ExternalQueryRunFacet
+                from openlineage.client.generated.symlinks_dataset import Identifier, SymlinksDatasetFacet
+            except ImportError:
+                from openlineage.client.facet import (
+                    ExternalQueryRunFacet,
+                    SymlinksDatasetFacet,
+                    SymlinksDatasetFacetIdentifiers as Identifier,
+                )
+                from openlineage.client.run import Dataset
 
         from airflow.providers.google.cloud.openlineage.utils import (
             get_facets_from_bq_table,
@@ -774,11 +784,7 @@ class GCSToBigQueryOperator(BaseOperator):
                 # but we create a symlink to the full object path with wildcard.
                 additional_facets = {
                     "symlink": SymlinksDatasetFacet(
-                        identifiers=[
-                            SymlinksDatasetFacetIdentifiers(
-                                namespace=f"gs://{self.bucket}", name=blob, type="file"
-                            )
-                        ]
+                        identifiers=[Identifier(namespace=f"gs://{self.bucket}", name=blob, type="file")]
                     ),
                 }
                 blob = Path(blob).parent.as_posix()

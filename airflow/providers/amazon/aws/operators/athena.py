@@ -30,8 +30,8 @@ from airflow.providers.amazon.aws.utils import validate_execute_complete_event
 from airflow.providers.amazon.aws.utils.mixins import aws_template_fields
 
 if TYPE_CHECKING:
-    from openlineage.client.facet import BaseFacet
-    from openlineage.client.run import Dataset
+    from openlineage.client.event_v2 import Dataset
+    from openlineage.client.facet_v2 import BaseFacet, DatasetFacet
 
     from airflow.providers.openlineage.extractors.base import OperatorLineage
     from airflow.utils.context import Context
@@ -214,8 +214,28 @@ class AthenaOperator(AwsBaseOperator[AthenaHook]):
         In addition to CTAS query, query and calculation results are stored in S3 location.
         For that reason additional output is attached with this location.
         """
-        from openlineage.client.facet import ExtractionError, ExtractionErrorRunFacet, SqlJobFacet
-        from openlineage.client.run import Dataset
+        if TYPE_CHECKING:
+            from openlineage.client.event_v2 import Dataset
+            from openlineage.client.generated.extraction_error_run import (
+                Error,
+                ExtractionErrorRunFacet,
+            )
+            from openlineage.client.generated.sql_job import SQLJobFacet as SqlJobFacet
+        else:
+            try:
+                from openlineage.client.event_v2 import Dataset
+                from openlineage.client.generated.extraction_error_run import (
+                    Error,
+                    ExtractionErrorRunFacet,
+                )
+                from openlineage.client.generated.sql_job import SQLJobFacet as SqlJobFacet
+            except ImportError:
+                from openlineage.client.facet import (
+                    ExtractionError as Error,
+                    ExtractionErrorRunFacet,
+                    SqlJobFacet,
+                )
+                from openlineage.client.run import Dataset
 
         from airflow.providers.openlineage.extractors.base import OperatorLineage
         from airflow.providers.openlineage.sqlparser import SQLParser
@@ -234,7 +254,7 @@ class AthenaOperator(AwsBaseOperator[AthenaHook]):
                 totalTasks=len(self.query) if isinstance(self.query, list) else 1,
                 failedTasks=len(parse_result.errors),
                 errors=[
-                    ExtractionError(
+                    Error(
                         errorMessage=error.message,
                         stackTrace=None,
                         task=error.origin_statement,
@@ -271,13 +291,27 @@ class AthenaOperator(AwsBaseOperator[AthenaHook]):
         return OperatorLineage(job_facets=job_facets, run_facets=run_facets, inputs=inputs, outputs=outputs)
 
     def get_openlineage_dataset(self, database, table) -> Dataset | None:
-        from openlineage.client.facet import (
-            SchemaDatasetFacet,
-            SchemaField,
-            SymlinksDatasetFacet,
-            SymlinksDatasetFacetIdentifiers,
-        )
-        from openlineage.client.run import Dataset
+        if TYPE_CHECKING:
+            from openlineage.client.event_v2 import Dataset
+            from openlineage.client.generated.schema_dataset import (
+                SchemaDatasetFacet,
+                SchemaDatasetFacetFields,
+            )
+            from openlineage.client.generated.symlinks_dataset import Identifier, SymlinksDatasetFacet
+        else:
+            try:
+                from openlineage.client.event_v2 import Dataset
+                from openlineage.client.generated.schema_dataset import (
+                    SchemaDatasetFacet,
+                    SchemaDatasetFacetFields,
+                )
+                from openlineage.client.generated.symlinks_dataset import Identifier, SymlinksDatasetFacet
+            except ImportError:
+                from openlineage.client.facet import (
+                    SchemaDatasetFacet,
+                    SchemaField as SchemaDatasetFacetFields,
+                    SymlinksDatasetFacet,
+                )
 
         client = self.hook.get_conn()
         try:
@@ -288,10 +322,10 @@ class AthenaOperator(AwsBaseOperator[AthenaHook]):
             # Dataset has also its' physical location which we can add in symlink facet.
             s3_location = table_metadata["TableMetadata"]["Parameters"]["location"]
             parsed_path = urlparse(s3_location)
-            facets: dict[str, BaseFacet] = {
+            facets: dict[str, DatasetFacet] = {
                 "symlinks": SymlinksDatasetFacet(
                     identifiers=[
-                        SymlinksDatasetFacetIdentifiers(
+                        Identifier(
                             namespace=f"{parsed_path.scheme}://{parsed_path.netloc}",
                             name=str(parsed_path.path),
                             type="TABLE",
@@ -300,7 +334,9 @@ class AthenaOperator(AwsBaseOperator[AthenaHook]):
                 )
             }
             fields = [
-                SchemaField(name=column["Name"], type=column["Type"], description=column["Comment"])
+                SchemaDatasetFacetFields(
+                    name=column["Name"], type=column["Type"], description=column["Comment"]
+                )
                 for column in table_metadata["TableMetadata"]["Columns"]
             ]
             if fields:
