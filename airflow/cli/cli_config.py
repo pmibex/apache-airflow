@@ -417,6 +417,13 @@ ARG_SAVE_DAGRUN = Arg(
     ("--save-dagrun",),
     help="After completing the backfill, saves the diagram for current DAG Run to the indicated file.\n\n",
 )
+ARG_MARK_SUCCESS_PATTERN = Arg(
+    ("--mark-success-pattern",),
+    help=(
+        "Don't run task_ids matching the regex <MARK_SUCCESS_PATTERN>, mark them as successful instead.\n"
+        "Can be used to skip e.g. dependency check sensors or cleanup steps in local testing.\n"
+    ),
+)
 
 # list_tasks
 ARG_TREE = Arg(("-t", "--tree"), help="Tree view", action="store_true")
@@ -1281,6 +1288,7 @@ DAGS_COMMANDS = (
             ARG_IMGCAT_DAGRUN,
             ARG_SAVE_DAGRUN,
             ARG_VERBOSE,
+            ARG_MARK_SUCCESS_PATTERN,
         ),
     ),
     ActionCommand(

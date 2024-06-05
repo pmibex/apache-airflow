@@ -39,6 +39,9 @@ To set up ``dag.test``, add these two lines to the bottom of your dag file:
 and that's it! You can add argument such as ``execution_date`` if you want to test argument-specific DAG runs, but otherwise
 you can run or debug DAGs as needed.
 
+Additionally, if you don't wish to execute some subset of tasks in your local environment (e.g. dependency check sensors or cleanup steps),
+you can automatically mark them successful supplying a pattern matching their ``task_id`` in the ``mark_success_pattern`` argument.
+
 Comparison with DebugExecutor
 -----------------------------
 
