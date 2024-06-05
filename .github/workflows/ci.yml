@@ -81,6 +81,8 @@ jobs:
         ${{ steps.selective-checks.outputs.providers-test-types-list-as-string }}
       separate-test-types-list-as-string: >-
         ${{ steps.selective-checks.outputs.separate-test-types-list-as-string }}
+      cross-providers-upstream-test-types-list-as-string: >-
+          ${{ steps.selective-checks.outputs.cross-providers-upstream-test-types-list-as-string }}
       include-success-outputs: ${{ steps.selective-checks.outputs.include-success-outputs }}
       postgres-exclude: ${{ steps.selective-checks.outputs.postgres-exclude }}
       mysql-exclude: ${{ steps.selective-checks.outputs.mysql-exclude }}
@@ -466,6 +468,31 @@ jobs:
       canary-run: ${{ needs.build-info.outputs.canary-run }}
       upgrade-to-newer-dependencies: ${{ needs.build-info.outputs.upgrade-to-newer-dependencies }}
       debug-resources: ${{ needs.build-info.outputs.debug-resources }}
+
+  tests-cross-providers:
+    name: "Cross providers tests"
+    uses: ./.github/workflows/cross-providers.yml
+    needs: [build-info, wait-for-ci-images]
+    permissions:
+      contents: read
+      packages: read
+    secrets: inherit
+    if: >
+      needs.build-info.outputs.run-tests == 'true' &&
+      (needs.build-info.outputs.canary-run == 'true' ||
+        needs.build-info.outputs.upgrade-to-newer-dependencies != 'false' ||
+        needs.build-info.outputs.full-tests-needed == 'true' ||
+        needs.build-info.outputs.skip-provider-tests != 'true')
+    with:
+      runs-on-as-json-default: ${{ needs.build-info.outputs.runs-on-as-json-default }}
+      image-tag: ${{ needs.build-info.outputs.image-tag }}
+      default-python-version: ${{ needs.build-info.outputs.default-python-version }}
+      python-versions: ${{ needs.build-info.outputs.python-versions }}
+      default-postgres-version: ${{ needs.build-info.outputs.default-postgres-version }}
+      canary-run: ${{ needs.build-info.outputs.canary-run }}
+      debug-resources: ${{ needs.build-info.outputs.debug-resources }}
+      cross-providers-upstream-test-types-list-as-string: >-
+        ${{ needs.build-info.outputs.cross-providers-upstream-test-types-list-as-string }}
 
   tests-integration:
     name: Integration Tests
