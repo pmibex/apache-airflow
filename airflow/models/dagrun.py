@@ -51,12 +51,13 @@ from airflow import settings
 from airflow.api_internal.internal_api_call import internal_api_call
 from airflow.callbacks.callback_requests import DagCallbackRequest
 from airflow.configuration import conf as airflow_conf
-from airflow.exceptions import AirflowException, RemovedInAirflow3Warning, TaskDeferred, TaskNotFound
+from airflow.exceptions import AirflowException, RemovedInAirflow3Warning, TaskNotFound
 from airflow.listeners.listener import get_listener_manager
 from airflow.models import Log
 from airflow.models.abstractoperator import NotMapped
 from airflow.models.base import Base, StringID
 from airflow.models.expandinput import NotFullyPopulated
+from airflow.models.mappedoperator import MappedOperator
 from airflow.models.taskinstance import TaskInstance as TI
 from airflow.models.tasklog import LogTemplate
 from airflow.stats import Stats
@@ -1538,19 +1539,28 @@ class DagRun(Base, LoggingMixin):
                 and not ti.task.outlets
             ):
                 dummy_ti_ids.append((ti.task_id, ti.map_index))
-            elif (
-                ti.task.start_trigger is not None
-                and ti.task.next_method is not None
-                and not ti.task.on_execute_callback
-                and not ti.task.on_success_callback
-                and not ti.task.outlets
-            ):
-                if ti.state != TaskInstanceState.UP_FOR_RESCHEDULE:
-                    ti.try_number += 1
-                ti.defer_task(
-                    exception=TaskDeferred(trigger=ti.task.start_trigger, method_name=ti.task.next_method),
-                    session=session,
-                )
+            # check whether the operator supports start execution from triggerer
+            elif ti.task.start_trigger_args is not None:
+                start_trigger_args = ti.task.start_trigger_args
+                if isinstance(ti.task, MappedOperator):
+                    context = ti.get_template_context()
+                    mapped_kwargs, _ = ti.task._expand_mapped_kwargs(context, session)
+                    start_from_trigger = mapped_kwargs.get("start_from_trigger", ti.task.start_from_trigger)
+
+                    # update the trigger_kwargs if it's in expanded kwargs
+                    start_trigger_args.trigger_kwargs = mapped_kwargs.get(
+                        "trigger_kwargs", start_trigger_args.trigger_kwargs
+                    )
+                else:
+                    start_from_trigger = ti.task.start_from_trigger
+
+                if start_from_trigger is True:
+                    ti.start_date = timezone.utcnow()
+                    if ti.state != TaskInstanceState.UP_FOR_RESCHEDULE:
+                        ti.try_number += 1
+                    ti.defer_task(session=session)
+                else:
+                    schedulable_ti_ids.append((ti.task_id, ti.map_index))
             else:
                 schedulable_ti_ids.append((ti.task_id, ti.map_index))
 
